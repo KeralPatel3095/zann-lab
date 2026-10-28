@@ -1,0 +1,3 @@
+Case Number,Dentist Code,Patient Name,PAN Number,Case Type,Tooth Numbers,Material,Shade,Received,Delivery,Prescription,Priority
+ZN-SAMPLE-1001,DR-014,Maya Chen,PAN-3001,other,21,Acrylic,A2,2026-11-01,2026-11-20,Fictional sample only. Do not import live patient records.,normal
+ZN-SAMPLE-1002,DR-027,Owen Bradley,PAN-2048,crown_bridge,16,Zirconia,A2,2026-11-02,2026-11-18,Fictional sample only.,high

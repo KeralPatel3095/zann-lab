@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ZANN Laboratory Production
 
-## Getting Started
+Web application for tracking dental laboratory cases from intake through production, quality control, and dispatch. Operational dates use `America/Toronto`.
 
-First, run the development server:
+This repository was built and tested with an embedded PostgreSQL server. Supabase is the intended hosted database, using the same SQL migrations. A live Supabase project was not connected in this workspace.
+
+## Run locally
+
+Requirements: Node.js 20 and npm.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd zann-lab
+copy .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `PG_PASSWORD`, `SESSION_SECRET`, `CRON_SECRET`, and `SEED_PASSWORD` in `.env.local`. Do not commit that file.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run setup
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000. In development, the sign-in page lists the fictional accounts. Their password is `SEED_PASSWORD`.
 
-## Learn More
+`npm run setup` creates the local database, applies `supabase/migrations`, loads department and workflow templates, and inserts fictional staff and cases when `SEED_DEMO` is not `false`.
 
-To learn more about Next.js, take a look at the following resources:
+## Checks
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run typecheck
+npm test
+npm run lint
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Tests use a separate database on port 54340 and do not load the demo seed.
 
-## Deploy on Vercel
+## What is implemented
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Local password sign-in, session cookies, and optional unverified Supabase JWT verification
+- Role checks in server actions and PostgreSQL row-level security
+- Case intake, validation, hold, delivery changes, search, and case timeline
+- Workflow templates for crowns, nightguards, dentures, repairs, implants, and other work
+- Backward scheduling from the requested delivery date, with an explicit warning when the date does not fit
+- Technician tasks, handoffs, blockers, quality-control rework, and dispatch
+- In-app notifications, including a one-working-day reminder job
+- Excel and CSV import and permission-aware export
+- Front desk, technician, department, management, and administrator screens
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Schema](docs/SCHEMA.md)
+- [Permissions](docs/PERMISSIONS.md)
+- [Scheduling](docs/SCHEDULING.md)
+- [Assumptions](docs/ASSUMPTIONS.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [User guide](docs/USER_GUIDE.md)
+
+Stage durations, holidays, and checklist wording are configurable placeholders. They are not measured ZANN production standards and they are not a certification of privacy compliance.
