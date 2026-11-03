@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "setup": "tsx src/lib/db/setup.ts",
     "test": "vitest run",
-    "go-live:check": "tsx scripts/go-live-check.ts"
+    "go-live:check": "tsx scripts/go-live-check.ts",
+    "sync:tracker": "tsx scripts/sync-tracker-loop.ts"
   },
   "dependencies": {
     "embedded-postgres": "^18.4.0-beta.17",

@@ -74,16 +74,50 @@ export async function applyTrackerWorkbook(
 }
 
 export async function syncConfiguredTracker() {
-  const url = await readSetting("tracker_sheet_url");
-  if (!url.trim()) return;
   const userId = await schedulerId();
-  const downloaded = await downloadSpreadsheet(url);
+  const downloaded = await loadTrackerBytes();
   if (!downloaded.ok) {
     await putSetting("tracker_sync_message", downloaded.message);
     return;
   }
   const result = await applyTrackerWorkbook(userId, downloaded.bytes, { automated: true });
   await putSetting("tracker_sync_message", result.ok ? result.message : result.message);
+}
+
+/** Local Excel file (PC sync) first, then Google Sheet URL. */
+export async function loadTrackerBytes(): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
+  const local = await readLocalTrackerFile();
+  if (local) return local;
+  const url = await readSetting("tracker_sheet_url");
+  if (!url.trim()) {
+    return {
+      ok: false,
+      message:
+        "No tracker source yet. On this PC put the Excel export at data/tracker.xlsx (or set TRACKER_LOCAL_FILE), or save a Google Sheet link on Import.",
+    };
+  }
+  return downloadSpreadsheet(url);
+}
+
+async function readLocalTrackerFile(): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string } | null> {
+  const fs = await import("fs/promises");
+  const path = await import("path");
+  const configured = process.env.TRACKER_LOCAL_FILE?.trim();
+  const candidates = [
+    configured,
+    path.join(process.cwd(), "data", "tracker.xlsx"),
+  ].filter((value): value is string => Boolean(value));
+
+  for (const filePath of candidates) {
+    try {
+      const bytes = await fs.readFile(filePath);
+      if (bytes.length < 64) continue;
+      return { ok: true, bytes };
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
 }
 
 async function writeCase(
