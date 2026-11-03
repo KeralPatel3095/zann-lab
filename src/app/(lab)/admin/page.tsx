@@ -9,7 +9,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const notice = (await searchParams).notice;
   const snapshot = await adminSnapshot(actor.id);
   const audit = await auditLog(actor.id);
-  if (!snapshot) return <p>Administrator access is required.</p>;
+  if (!snapshot) return <p>Backend access is required.</p>;
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold">Administration</h1>
@@ -55,6 +55,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <option value="department_lead">Department lead</option>
             <option value="production_manager">Production manager</option>
             <option value="administrator">Administrator</option>
+            <option value="backend">Backend</option>
           </select>
           <select name="department_id" defaultValue="">
             <option value="">No department</option>

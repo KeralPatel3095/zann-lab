@@ -51,7 +51,7 @@ export function ProductMark({ name }: { name: string }) {
   const label = name.trim() || "Unspecified";
   return (
     <span
-      className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+      className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold tracking-tight"
       style={{ background: tone.background, color: tone.color, borderColor: tone.border }}
     >
       {label}

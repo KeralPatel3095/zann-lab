@@ -1,17 +1,25 @@
-export type StaffRole = "administrator" | "front_desk" | "technician" | "department_lead" | "production_manager";
+export type StaffRole = "administrator" | "backend" | "front_desk" | "technician" | "department_lead" | "production_manager";
 
 export type Actor = {
   id: string;
   fullName: string;
+  email: string;
   role: StaffRole;
+  jobTitle: string;
   canViewClinicIdentity: boolean;
   active: boolean;
 };
 
-export function canViewClinicIdentity(actor: Pick<Actor, "role" | "canViewClinicIdentity">) {
-  if (actor.role === "technician") return false;
-  if (actor.role === "administrator" || actor.role === "front_desk") return true;
-  return actor.canViewClinicIdentity;
+const clinicIdentityEmails = new Set([
+  "keral.patel@zann-lab.test",
+  "parneet.kaur@zann-lab.test",
+  "ana.bogdanovic@zann-lab.test",
+]);
+
+/** Dentist office names are visible only to Keral, Parneet, and Ana. */
+export function canViewClinicIdentity(actor: Pick<Actor, "email" | "role" | "canViewClinicIdentity">) {
+  const email = (actor.email ?? "").trim().toLowerCase();
+  return clinicIdentityEmails.has(email);
 }
 
 export type ProductionCase = {
@@ -58,7 +66,7 @@ export function productionCaseView(record: ProductionCase) {
   return { ...record };
 }
 
-export function caseViewForActor(actor: Pick<Actor, "role" | "canViewClinicIdentity">, record: ProductionCase, clinic: ClinicIdentity | null) {
+export function caseViewForActor(actor: Pick<Actor, "email" | "role" | "canViewClinicIdentity">, record: ProductionCase, clinic: ClinicIdentity | null) {
   const view: ProductionCase & { clinic?: ClinicIdentity } = productionCaseView(record);
   if (canViewClinicIdentity(actor) && clinic) view.clinic = clinic;
   for (const key of clinicKeys) {
@@ -86,7 +94,7 @@ export const technicianExportColumns = [
 
 export const clinicExportColumns = ["dentist_name", "clinic_name", "clinic_email", "clinic_phone"] as const;
 
-export function exportColumnsFor(actor: Pick<Actor, "role" | "canViewClinicIdentity">) {
+export function exportColumnsFor(actor: Pick<Actor, "email" | "role" | "canViewClinicIdentity">) {
   if (!canViewClinicIdentity(actor)) return [...technicianExportColumns];
   return [...technicianExportColumns, ...clinicExportColumns];
 }

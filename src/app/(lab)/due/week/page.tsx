@@ -4,23 +4,41 @@ import { PanMark, ProductMark } from "@/components/case-marks";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
 import { listCasesDueBetween } from "@/lib/domain/reports";
-import { dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "@/lib/scheduling/calendar";
+import { EARLY_FINISH_DAYS, operationalDueAt } from "@/lib/office-rules";
+import { canViewClinicIdentity } from "@/lib/privacy";
+import { belongsOnFinishToday, dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "@/lib/scheduling/calendar";
 
 export default async function DueWeekPage() {
   const actor = await requireActorPage();
-  const { start, end } = weekAheadWindow();
+  const showOffice = canViewClinicIdentity(actor);
+  const now = DateTime.now().setZone(LAB_ZONE);
+  const { start, end } = weekAheadWindow(now);
   const dueStart = start.plus({ days: 1 }).toISODate() ?? "";
-  const dueEnd = end.plus({ days: 4 }).toISODate() ?? "";
+  const dueEnd = end.plus({ days: 4 + EARLY_FINISH_DAYS }).toISODate() ?? "";
   const found = await listCasesDueBetween(actor.id, dueStart, dueEnd);
   const rows = found.filter((row) => {
     if (!row.requested_delivery_at) return false;
-    const workDay = workDayBeforeDue(DateTime.fromJSDate(row.requested_delivery_at), row.tracker_due);
+    const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
+    if (!opDue) return false;
+    // Finish today already owns this case — do not also list it under week ahead.
+    if (
+      belongsOnFinishToday({
+        dueAt: row.requested_delivery_at,
+        sheetSectionAt: row.received_at,
+        trackerDue: row.tracker_due,
+        operationalDue: opDue,
+        now,
+      })
+    ) {
+      return false;
+    }
+    const workDay = workDayBeforeDue(opDue, row.tracker_due);
     return workDay >= start && workDay <= end;
   });
-  const canOpen = actor.role === "administrator" || actor.role === "front_desk" || actor.role === "production_manager";
   const groups = new Map<string, Array<(typeof rows)[number]>>();
   for (const row of rows) {
-    const workDay = row.requested_delivery_at ? workDayBeforeDue(DateTime.fromJSDate(row.requested_delivery_at), row.tracker_due) : null;
+    const opDue = row.requested_delivery_at ? operationalDueAt(row.requested_delivery_at, row.dentist_code) : null;
+    const workDay = opDue ? workDayBeforeDue(opDue, row.tracker_due) : null;
     if (!workDay || workDay.weekday > 5) continue;
     const day = workDay.toISODate() ?? "none";
     const bucket = groups.get(day);
@@ -35,7 +53,7 @@ export default async function DueWeekPage() {
         <h1 className="mt-1 text-3xl">Week ahead</h1>
         <p className="mt-1 text-sm">
           {rows.length} in-lab cases are listed on a Monday to Friday only, from {start.toFormat("cccc d LLLL")} through {end.toFormat("cccc d LLLL")}.
-          A case due 3 Nov is listed on 2 Nov. A case due by 10am, or earlier, is listed one more weekday before that. Saturday and Sunday are not listed. The due date still shows what the sheet says. Office names stay off this list.
+          A case due 3 Nov is listed on 2 Nov. A case due by 10am, or earlier, is listed one more weekday before that. Saturday and Sunday are not listed. The due date still shows what the sheet says.
         </p>
       </header>
       {[...groups.entries()].map(([day, cases]) => {
@@ -47,11 +65,22 @@ export default async function DueWeekPage() {
               <p className="text-sm">{cases.length} {cases.length === 1 ? "case" : "cases"}</p>
             </div>
             <table className="mt-2">
-              <thead><tr><th>Case</th><th>Patient</th><th>PAN</th><th>Type</th><th>Due</th><th>Status</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Case</th>
+                  {showOffice ? <th>Office</th> : null}
+                  <th>Patient</th>
+                  <th>PAN</th>
+                  <th>Type</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
               <tbody>
                 {cases.map((row) => (
                   <tr key={row.id}>
-                    <td data-label="Case">{canOpen ? <Link href={`/cases/${row.id}`}>{row.case_number}</Link> : row.case_number}</td>
+                    <td data-label="Case"><Link href={`/cases/${row.id}`}>{row.case_number}</Link></td>
+                    {showOffice ? <td data-label="Office">{row.clinic_name || "—"}</td> : null}
                     <td data-label="Patient">{row.patient_name}</td>
                     <td data-label="PAN"><PanMark value={row.pan_number} status={row.overall_status} /></td>
                     <td data-label="Type"><ProductMark name={row.case_type} /></td>

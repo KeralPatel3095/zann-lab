@@ -1,18 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const sourceSans = Source_Sans_3({
+  subsets: ["latin"],
+  variable: "--font-source",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
-  title: "ZANN Laboratory Production",
-  description: "Case tracking, production scheduling, and dispatch for ZANN Dental Laboratory.",
+  title: "ZANN Laboratory",
+  description: "Production case tracking for ZANN Dental Laboratory.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#3d6d7a",
+  themeColor: "#2c5560",
 };
 
 export const dynamic = "force-dynamic";
@@ -20,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${inter.className} antialiased`}>{children}</body>
+      <body className={`${sourceSans.variable} ${sourceSans.className} antialiased`}>{children}</body>
     </html>
   );
 }

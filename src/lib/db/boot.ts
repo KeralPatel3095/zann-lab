@@ -1,4 +1,5 @@
 import { seedDemo } from "./demo";
+import { seedLabEmployees } from "./employees";
 import { migrateDatabase } from "./migrate";
 import { seedReferenceData } from "./reference";
 
@@ -15,6 +16,7 @@ async function start() {
   await migrateDatabase();
   await seedReferenceData();
   await seedDemo();
+  await seedLabEmployees();
   if (!state.__zannTimer) {
     const { runReminderJob } = await import("../domain/jobs");
     const run = () => {

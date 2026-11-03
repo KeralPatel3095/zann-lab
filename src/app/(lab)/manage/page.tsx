@@ -17,8 +17,8 @@ export default async function ManagePage() {
     <div className="grid gap-5">
       <header>
         <p className="lab-kicker">Management</p>
-        <h1 className="mt-1 text-3xl">What needs attention</h1>
-        <p className="mt-1 max-w-2xl text-sm">In the lab means finish the work. Ready to pack means it is made. Finished cases stay off this page.</p>
+        <h1 className="mt-1 text-3xl">Attention board</h1>
+        <p className="mt-1 max-w-2xl text-sm">Open production, pack-ready work, and late cases. Completed work stays off this page.</p>
       </header>
       <section className="lab-stats grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(([label, value, detail, href]) => (

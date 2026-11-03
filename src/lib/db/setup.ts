@@ -7,8 +7,10 @@ async function main() {
   await migrateDatabase();
   const { seedReferenceData } = await import("./reference");
   const { seedDemo } = await import("./demo");
+  const { seedLabEmployees } = await import("./employees");
   await seedReferenceData();
   await seedDemo();
+  await seedLabEmployees();
   const sql = await getSql();
   const [row] = await sql<{ version: string }[]>`select version()`;
   console.log(`Database ready: ${row?.version ?? "unknown"}`);

@@ -8,13 +8,14 @@ import {
   appHref,
   clinicForCase,
   fail,
-  hasRole,
+  hasStaffAccess,
   loadCalendar,
   postNotice,
   runAs,
   setting,
   type ActionResult,
 } from "./common";
+import { canViewCaseType, ownerEmailForCaseType } from "../product-routing";
 import { loadTechnicians, rescheduleCase } from "./schedule";
 
 export type UnitInput = {
@@ -80,7 +81,7 @@ export function validateRelease(input: CaseInput, zone: string, hasClinic: boole
 export async function createCase(userId: string, input: CaseInput): Promise<ActionResult<{ id: string; caseNumber: string }>> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       const calendar = await loadCalendar(tx);
       if (!priorities.has(input.priority)) return { ok: false, message: "Choose a valid priority." };
       const received = parseWhen(input.receivedAt, calendar.zone);
@@ -155,7 +156,7 @@ export async function createCase(userId: string, input: CaseInput): Promise<Acti
 export async function releaseCase(userId: string, caseId: string, acknowledgeInfeasible: boolean): Promise<ActionResult<{ reasons: string[] }>> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       const [row] = await tx<{
         id: string;
         case_number: string;
@@ -270,6 +271,15 @@ export async function releaseCase(userId: string, caseId: string, acknowledgeInf
         technicians,
         calendar,
       );
+      const preferredEmail = ownerEmailForCaseType(row.case_type);
+      if (preferredEmail) {
+        const [preferred] = await tx<{ id: string }[]>`
+          select id from profiles where lower(email) = ${preferredEmail} and active and role = 'technician'
+        `;
+        if (preferred) {
+          for (const stage of planned) assignment.assignments[stage.id] = preferred.id;
+        }
+      }
       reasons.push(...assignment.conflicts);
       const stageById = new Map(stages.map((stage) => [stage.id, stage]));
       const taskIds = new Map<string, string>();
@@ -446,7 +456,7 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
           order by t.sort_order
         `
       : [];
-    const views = rows.map((row) => {
+    const views = rows.filter((row) => canViewCaseType(actor, row.case_type)).map((row) => {
       const open = taskRows.find((task) => task.case_id === row.id && !["completed", "cancelled"].includes(task.task_status));
       const production: ProductionCase = {
         id: row.id,
@@ -615,7 +625,7 @@ export async function getCase(userId: string, caseId: string) {
 export async function holdCase(userId: string, caseId: string, reason: string): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       if (reason.trim().length < 3) return { ok: false, message: "A hold reason is required." };
       const updated = await tx<{ id: string }[]>`
         update cases set overall_status = 'on_hold', hold_reason = ${reason.trim().slice(0, 500)}
@@ -634,7 +644,7 @@ export async function holdCase(userId: string, caseId: string, reason: string): 
 export async function resumeCase(userId: string, caseId: string): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       const [task] = await tx<{ id: string }[]>`select id from production_tasks where case_id = ${caseId} limit 1`;
       const status = task ? "in_production" : "awaiting_validation";
       const updated = await tx<{ id: string }[]>`
@@ -654,7 +664,7 @@ export async function resumeCase(userId: string, caseId: string): Promise<Action
 export async function changeDeliveryDate(userId: string, caseId: string, requestedDeliveryAt: string): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk", "production_manager"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       const calendar = await loadCalendar(tx);
       const delivery = parseWhen(requestedDeliveryAt, calendar.zone);
       if (!delivery) return { ok: false, message: "Enter a valid delivery date." };
@@ -678,7 +688,7 @@ export async function changeDeliveryDate(userId: string, caseId: string, request
 export async function recordDispatch(userId: string, caseId: string, input: { courier: string; trackingNumber: string; notes: string; deliver?: boolean }): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk", "production_manager"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       const [row] = await tx<{ overall_status: string }[]>`select overall_status::text as overall_status from cases where id = ${caseId}`;
       if (!row) return { ok: false, message: "Case not found." };
       if (!["ready_for_dispatch", "dispatched"].includes(row.overall_status) && !input.deliver) {
@@ -724,7 +734,7 @@ export async function recordDispatch(userId: string, caseId: string, input: { co
 export async function recordMissingInformation(userId: string, caseId: string, note: string): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "front_desk"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       await tx`update cases set missing_information = ${note.trim().slice(0, 1000)} where id = ${caseId}`;
       await addCaseEvent(tx, caseId, actor.id, "missing_information", { note: note.trim().slice(0, 300) });
       return { ok: true as const };

@@ -27,7 +27,7 @@ export function StatusPill({ value, kind = "case", trackerStatus = "" }: { value
   const tone = shown?.tone ?? value;
   const map = kind === "task" ? taskStatusLabels : kind === "indicator" ? indicatorLabels : caseStatusLabels;
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tones[tone] ?? "bg-[#f4f4f4] text-[#636466] border-[#e4e4e4]"}`}>
+    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium tracking-tight ${tones[tone] ?? "bg-[#f4f4f4] text-[#636466] border-[#e4e4e4]"}`}>
       {shown?.text ?? label(map, value)}
     </span>
   );

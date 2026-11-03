@@ -61,6 +61,7 @@ export const blockerLabels: Record<string, string> = {
 
 export const roleLabels: Record<string, string> = {
   administrator: "Administrator",
+  backend: "Backend",
   front_desk: "Front Desk",
   technician: "Technician",
   department_lead: "Department Lead",

@@ -31,6 +31,45 @@ export function dueSheetLabel(trackerDue: string, at: Date | string | null) {
   return text || "—";
 }
 
+/** Toronto calendar date from a timestamptz / Date / ISO date. */
+export function labDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parsed = value instanceof Date ? DateTime.fromJSDate(value) : DateTime.fromISO(String(value));
+  if (!parsed.isValid) return null;
+  return parsed.setZone(LAB_ZONE).toISODate();
+}
+
+/**
+ * Finish-today membership (sheet due text is never rewritten):
+ * - operational due is today or tomorrow (e.g. on 2 Nov → through 3 Nov)
+ * - or the work day before a later due (morning 4 Nov → listed on 2 Nov)
+ * Newly synced / received dates do not put a case on this list by themselves.
+ */
+export function belongsOnFinishToday(input: {
+  dueAt: Date | string | null | undefined;
+  sheetSectionAt?: Date | string | null | undefined;
+  trackerDue?: string;
+  now?: DateTime;
+  operationalDue?: DateTime | null;
+}) {
+  const today = (input.now ?? DateTime.now()).setZone(LAB_ZONE).startOf("day");
+  const tomorrow = today.plus({ days: 1 });
+  const todayIso = today.toISODate() ?? "";
+  const tomorrowIso = tomorrow.toISODate() ?? "";
+  const due = input.operationalDue?.isValid
+    ? input.operationalDue
+    : input.dueAt
+      ? input.dueAt instanceof Date
+        ? DateTime.fromJSDate(input.dueAt)
+        : DateTime.fromISO(String(input.dueAt))
+      : null;
+  const dueIso = due?.isValid ? due.setZone(LAB_ZONE).toISODate() : labDate(input.dueAt);
+  if (dueIso === todayIso || dueIso === tomorrowIso) return true;
+  if (due?.isValid && workDayBeforeDue(due, input.trackerDue ?? "").toISODate() === todayIso) return true;
+  return false;
+}
+
 export function weekAheadWindow(now: DateTime = DateTime.now()) {
   const today = now.setZone(LAB_ZONE).startOf("day");
   const monday = today.minus({ days: today.weekday - 1 });

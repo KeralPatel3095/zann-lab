@@ -2,7 +2,7 @@ import { DateTime } from "luxon";
 import { getSql, type Tx } from "../db/sql";
 import { LAB_ZONE } from "../scheduling/calendar";
 import { officeCode, parseTrackerWorkbook, spreadsheetIdFromInput, type TrackerCase } from "../sheet/tracker";
-import { hasRole, runAs, type ActionResult } from "./common";
+import { hasBackendAccess, runAs, type ActionResult } from "./common";
 
 type SyncCounts = {
   created: number;
@@ -13,7 +13,7 @@ type SyncCounts = {
 };
 
 export async function trackerStatus(userId: string) {
-  const allowed = await runAs(userId, async (_tx, actor) => hasRole(actor, ["administrator", "front_desk"]));
+  const allowed = await runAs(userId, async (_tx, actor) => hasBackendAccess(actor));
   if (!allowed) return { url: "", message: "" };
   return {
     url: await readSetting("tracker_sheet_url"),
@@ -23,19 +23,23 @@ export async function trackerStatus(userId: string) {
 
 export async function saveTrackerSheetUrl(userId: string, url: string): Promise<ActionResult> {
   const actor = await runAs(userId, async (_tx, current) => current);
-  if (!hasRole(actor, ["administrator", "front_desk"])) return { ok: false, message: "Not allowed" };
+  if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
   const trimmed = url.trim();
   if (trimmed && !spreadsheetIdFromInput(trimmed)) return { ok: false, message: "Paste the full Google Sheets link." };
   await putSetting("tracker_sheet_url", trimmed);
   return { ok: true };
 }
 
-export async function applyTrackerWorkbook(userId: string, bytes: Uint8Array): Promise<ActionResult<SyncCounts & { message: string }>> {
+export async function applyTrackerWorkbook(
+  userId: string,
+  bytes: Uint8Array,
+  options?: { automated?: boolean },
+): Promise<ActionResult<SyncCounts & { message: string }>> {
   const parsed = await parseTrackerWorkbook(bytes);
   if (!parsed.cases.length) return { ok: false, message: "That file does not contain the monthly case tracker sheets." };
   const counts: SyncCounts = { created: 0, updated: 0, unchanged: 0, invalid: 0, pickups: 0 };
   await runAs(userId, async (tx, actor) => {
-    if (!hasRole(actor, ["administrator", "front_desk"])) throw new Error("Not allowed");
+    if (!options?.automated && !hasBackendAccess(actor)) throw new Error("Not allowed");
     const existing = await tx<{ id: string; case_number: string; tracker_fingerprint: string; tracker_status: string; tracker_due: string }[]>`
       select id, case_number, tracker_fingerprint, tracker_status, tracker_due from cases
     `;
@@ -78,7 +82,7 @@ export async function syncConfiguredTracker() {
     await putSetting("tracker_sync_message", downloaded.message);
     return;
   }
-  const result = await applyTrackerWorkbook(userId, downloaded.bytes);
+  const result = await applyTrackerWorkbook(userId, downloaded.bytes, { automated: true });
   await putSetting("tracker_sync_message", result.ok ? result.message : result.message);
 }
 
@@ -95,7 +99,8 @@ async function writeCase(
   try {
     const mapped = mapStatus(row.status);
     const rush = /asap/i.test(row.dueRaw);
-    const received = atLocal(row.receivedOn, "12:00:00");
+    // New sheet rows count as received on the sync day (first time we see the case).
+    const receivedToday = atLocal(DateTime.now().setZone(LAB_ZONE).toISODate(), "12:00:00");
     const delivery = atLocal(row.dueOn, "16:30:00");
     const scheduleNote = row.dueOn ? "" : row.dueRaw.slice(0, 500);
     const clinicId = row.officeName.trim() ? clinicByCode.get(officeCode(row.officeName)) ?? null : null;
@@ -115,7 +120,7 @@ async function writeCase(
           historical, hold_reason, schedule_note, tracker_status, tracker_due, tracker_fingerprint, created_by
         ) values (
           ${row.caseNumber}, ${code}, ${row.patientName}, ${row.panNumber}, ${row.caseType}, ${row.caseType}, ${row.notes},
-          ${received}, ${delivery}, ${rush ? "rush" : "normal"}::priority_level, ${rush},
+          ${receivedToday}, ${delivery}, ${rush ? "rush" : "normal"}::priority_level, ${rush},
           ${overall}::case_status, ${dispatchState}::dispatch_state, ${mark}::deadline_indicator,
           ${mapped.historical}, ${mapped.holdReason}, ${scheduleNote}, ${row.status.slice(0, 80)}, ${row.dueRaw.slice(0, 160)}, ${row.fingerprint}, ${userId}
         )
@@ -131,7 +136,6 @@ async function writeCase(
           case_type = ${row.caseType},
           restoration_type = ${row.caseType},
           prescription = ${row.notes},
-          received_at = ${received},
           requested_delivery_at = ${delivery},
           priority = ${rush ? "rush" : "normal"}::priority_level,
           rush = ${rush},
@@ -156,7 +160,7 @@ async function writeCase(
       `;
     }
     if (mapped.terminal && !dispatch && caseId) {
-      const when = delivery ?? received ?? DateTime.now().setZone(LAB_ZONE).toUTC().toISO();
+      const when = delivery ?? receivedToday ?? DateTime.now().setZone(LAB_ZONE).toUTC().toISO();
       await tx`
         insert into dispatch_records (case_id, dispatched_at, delivered_at, notes)
         values (${caseId}, ${when}, ${mapped.overall === "delivered" ? when : null}, ${"Recorded from the case tracker."})

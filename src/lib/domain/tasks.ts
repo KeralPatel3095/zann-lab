@@ -1,6 +1,6 @@
 import { blockerLabels, taskStatusLabels } from "../labels";
 import type { Tx } from "../db/sql";
-import { addCaseEvent, addTaskEvent, appHref, clinicForCase, fail, hasRole, postNotice, runAs, type ActionResult } from "./common";
+import { addCaseEvent, addTaskEvent, appHref, clinicForCase, fail, hasStaffAccess, postNotice, runAs, type ActionResult } from "./common";
 import { rescheduleCase } from "./schedule";
 
 const blockerKeys = new Set(Object.keys(blockerLabels));
@@ -111,7 +111,7 @@ async function releaseNext(tx: Tx, task: TaskRow, actorId: string) {
     from cases where id = ${task.case_id}
   `;
   if (!caseRow) return;
-  const clinic = await clinicForCase(tx, { id: actorId, fullName: "", role: "administrator", canViewClinicIdentity: true, active: true }, task.case_id);
+  const clinic = await clinicForCase(tx, { id: actorId, fullName: "", email: "", role: "administrator", jobTitle: "", canViewClinicIdentity: true, active: true }, task.case_id);
   const successors = await tx<{ successor_task_id: string }[]>`
     select successor_task_id from task_dependencies where predecessor_task_id = ${task.id}
   `;
@@ -220,7 +220,7 @@ export async function transitionTask(
         status = "blocked";
       } else if (action === "resolve" && task.task_status === "blocked") status = task.actual_started_at ? "in_progress" : "ready_to_start";
       else if (action === "approve" && task.task_status === "awaiting_approval") {
-        if (!hasRole(actor, ["administrator", "department_lead", "production_manager"])) return { ok: false, message: "Not allowed" };
+        if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
         status = "completed";
       } else if (action === "complete" && task.task_status === "in_progress") {
         if (task.is_quality_gate) return { ok: false, message: "Record the quality-control result instead of completing this task directly." };
@@ -475,7 +475,7 @@ export async function listMyTasks(userId: string, filters: { status?: string; pr
 export async function assignTask(userId: string, taskId: string, assigneeId: string, version: number): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {
-      if (!hasRole(actor, ["administrator", "department_lead", "production_manager"])) return { ok: false, message: "Not allowed" };
+      if (!hasStaffAccess(actor)) return { ok: false, message: "Not allowed" };
       const task = await loadTask(tx, taskId);
       if (!task) return { ok: false, message: "Task not found." };
       if (task.version !== version) return { ok: false, message: "This task was updated by someone else. Refresh and try again." };
@@ -495,7 +495,7 @@ export async function assignTask(userId: string, taskId: string, assigneeId: str
 
 export async function departmentQueue(userId: string) {
   return runAs(userId, async (tx, actor) => {
-    if (!hasRole(actor, ["department_lead", "administrator", "production_manager"])) return { actor, tasks: [], members: [] };
+    if (!hasStaffAccess(actor)) return { actor, tasks: [], members: [] };
     const tasks = await tx<{
       id: string;
       title: string;

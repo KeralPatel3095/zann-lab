@@ -1,10 +1,11 @@
 import { requireActorPage } from "@/lib/auth/current";
+import { hasBackendAccess } from "@/lib/domain/common";
 import { trackerStatus } from "@/lib/domain/tracker-sync";
 import { syncTrackerAction } from "@/server/actions";
 
 export default async function ImportPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
-  if (actor.role !== "administrator" && actor.role !== "front_desk") return <p>Front desk access is required.</p>;
+  if (!hasBackendAccess(actor)) return <p>Backend access is required.</p>;
   const notice = (await searchParams).notice;
   const status = await trackerStatus(actor.id);
   return (

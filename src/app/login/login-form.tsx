@@ -6,6 +6,15 @@ import { SubmitButton } from "@/components/submit-button";
 
 const initial = { error: "" };
 
+const staffLogins = [
+  { email: "keral.patel@zann-lab.test", password: "KeralPatel@sept" },
+  { email: "ana.bogdanovic@zann-lab.test", password: "AnaBogdanovic@nov" },
+  { email: "ned.bogdanovic@zann-lab.test", password: "NedBogdanovic@nov" },
+  { email: "zoca.bogdanovic@zann-lab.test", password: "ZocaBogdanovic@nov" },
+  { email: "parneet.kaur@zann-lab.test", password: "ParneetKaur@sept" },
+  { email: "negar.qureshi@zann-lab.test", password: "Negarqureshi@sept" },
+];
+
 export function LoginForm({ seedPassword }: { seedPassword: string }) {
   const [state, action] = useActionState(loginAction, initial);
   return (
@@ -15,24 +24,31 @@ export function LoginForm({ seedPassword }: { seedPassword: string }) {
           <p className="lab-mark" aria-hidden="true">Z</p>
           <p className="lab-logo">ZANN</p>
           <p className="lab-kicker">Dental laboratory</p>
-          <h1>Production</h1>
-          <p>Case tracking for the bench, from the sheet through finish and pack.</p>
+          <h1>Production desk</h1>
+          <p>Cases, due dates, and bench work in one place — from the tracker sheet through finish and pack.</p>
         </div>
         <div className="lab-login-card">
-        <h2>Sign in</h2>
-        <p className="mt-2 text-sm">Use the email and password set for you.</p>
-        <form action={action} className="mt-6 grid gap-3">
-          <label>Email<input name="email" type="email" autoComplete="username" required /></label>
-          <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
-          {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
-          <SubmitButton>Sign in</SubmitButton>
-        </form>
-        {seedPassword ? (
-          <p className="mt-5 text-xs leading-5 text-zinc-500">
-            Sample accounts still use the starter password <span className="font-medium text-zinc-800">{seedPassword}</span> until an administrator sets a personal one.
-            Front desk: morgan.ellis@zann-lab.test. Administrator: avery.chen@zann-lab.test. Technician: riley.shah@zann-lab.test.
-          </p>
-        ) : null}
+          <h2>Sign in</h2>
+          <p className="mt-2 text-sm">Enter the credentials issued for your account.</p>
+          <form action={action} className="mt-6 grid gap-3">
+            <label>Email<input name="email" type="email" autoComplete="username" required /></label>
+            <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
+            {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
+            <SubmitButton>Sign in</SubmitButton>
+          </form>
+          {seedPassword ? (
+            <details className="lab-dev-logins mt-6">
+              <summary>Development accounts</summary>
+              <ul className="mt-3 grid gap-1.5">
+                {staffLogins.map((person) => (
+                  <li key={person.email}>
+                    <span>{person.email}</span>
+                    <span className="lab-dev-pass">{person.password}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </div>
       </section>
     </main>

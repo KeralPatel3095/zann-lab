@@ -14,21 +14,29 @@ export async function requireActor(tx: Tx, userId: string): Promise<Actor> {
   const [row] = await tx<{
     id: string;
     full_name: string;
+    email: string;
     role: StaffRole;
+    job_title: string;
     active: boolean;
     can_view_clinic_identity: boolean;
   }[]>`
-    select id, full_name, role::text as role, active, can_view_clinic_identity
+    select id, full_name, email, role::text as role, coalesce(job_title, '') as job_title, active, can_view_clinic_identity
     from profiles
     where id = ${userId}
   `;
   if (!row?.active) throw new Error("Not allowed");
-  return {
+  const actor = {
     id: row.id,
     fullName: row.full_name,
+    email: row.email,
     role: row.role,
+    jobTitle: row.job_title,
     active: row.active,
     canViewClinicIdentity: row.can_view_clinic_identity,
+  };
+  return {
+    ...actor,
+    canViewClinicIdentity: canViewClinicIdentity(actor),
   };
 }
 
@@ -150,6 +158,44 @@ export async function addTaskEvent(tx: Tx, taskId: string, caseId: string, actor
   `;
 }
 
+export const ALL_STAFF_ROLES: StaffRole[] = [
+  "administrator",
+  "backend",
+  "front_desk",
+  "technician",
+  "department_lead",
+  "production_manager",
+];
+
 export function hasRole(actor: Actor, roles: StaffRole[]) {
   return roles.includes(actor.role);
+}
+
+/** Every signed-in lab account can use the full product. */
+export function hasStaffAccess(actor: Actor) {
+  return hasRole(actor, ALL_STAFF_ROLES);
+}
+
+/** Management board — not for bench technicians. */
+export function hasManagementAccess(actor: Actor) {
+  return actor.role !== "technician";
+}
+
+const fullAccessEmails = new Set(["keral.patel@zann-lab.test"]);
+
+/** Keral has every gated feature (admin tools, volume, clinic names). */
+export function hasFullAccess(actor: Pick<Actor, "email">) {
+  return fullAccessEmails.has((actor.email ?? "").trim().toLowerCase());
+}
+
+/** Technical settings: Admin, Password, Import — backend role or full-access accounts. */
+export function hasBackendAccess(actor: Actor) {
+  return actor.role === "backend" || hasFullAccess(actor);
+}
+
+const receiptsAccessEmails = new Set(["keral.patel@zann-lab.test", "parneet.kaur@zann-lab.test"]);
+
+/** Daily sending volume — Keral and Parneet only. */
+export function hasReceiptsAccess(actor: Actor) {
+  return hasFullAccess(actor) || receiptsAccessEmails.has(actor.email.trim().toLowerCase());
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireActorPage } from "@/lib/auth/current";
 import { formatStamp } from "@/lib/format";
 import { listNotifications } from "@/lib/domain/reports";
@@ -16,12 +17,15 @@ export default async function NotificationsPage() {
             <span className="text-xs text-zinc-500">{formatStamp(note.created_at)}</span>
           </div>
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm">{note.body}</pre>
-          {note.read_at ? <p className="mt-2 text-xs text-zinc-500">Read</p> : (
-            <form action={readNotificationAction} className="mt-2">
-              <input type="hidden" name="notification_id" value={note.id} />
-              <button className="text-sm text-teal-800">Mark read</button>
-            </form>
-          )}
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {note.notification_type === "chat_message" ? <Link className="text-sm text-teal-800" href="/chat">Open chat</Link> : null}
+            {note.read_at ? <p className="text-xs text-zinc-500">Read</p> : (
+              <form action={readNotificationAction}>
+                <input type="hidden" name="notification_id" value={note.id} />
+                <button className="text-sm text-teal-800">Mark read</button>
+              </form>
+            )}
+          </div>
         </article>
       ))}
       {notes.length === 0 ? <p className="text-sm text-zinc-500">No notifications yet. Assigned work remains on My Tasks even if email is unavailable.</p> : null}

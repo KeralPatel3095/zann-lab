@@ -21,9 +21,15 @@ npm run setup
 npm run dev
 ```
 
-Open http://localhost:3000. In development, the sign-in page lists the fictional accounts. Their password is `SEED_PASSWORD`.
+Open http://localhost:3000. With `SHOW_DEV_LOGINS=true`, the sign-in page can list staff accounts for local testing.
 
-`npm run setup` creates the local database, applies `supabase/migrations`, loads department and workflow templates, and inserts fictional staff and cases when `SEED_DEMO` is not `false`.
+`npm run setup` creates the local database, applies `supabase/migrations`, loads department and workflow templates, and inserts staff. Fictional demo cases load only when `SEED_DEMO` is not `false`.
+
+## Go live
+
+See [docs/GO_LIVE.md](docs/GO_LIVE.md) for free hosting (Supabase + Netlify), production env vars, and the smoke-test checklist.
+
+Same Wi‑Fi: open `http://<this-pc-ip>:3000`. Any Wi‑Fi while this PC is on: `npm run tunnel`.
 
 ## Checks
 

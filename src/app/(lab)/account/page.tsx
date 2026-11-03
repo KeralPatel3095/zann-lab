@@ -1,16 +1,18 @@
 import { requireActorPage } from "@/lib/auth/current";
+import { hasBackendAccess } from "@/lib/domain/common";
 import { roleLabels } from "@/lib/labels";
 import { ownPasswordAction } from "@/server/actions";
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
+  if (!hasBackendAccess(actor)) return <p>Backend access is required.</p>;
   const notice = (await searchParams).notice;
   return (
     <div className="grid max-w-lg gap-4">
       <header>
         <p className="lab-kicker">Your account</p>
         <h1 className="mt-1 text-3xl">Password</h1>
-        <p className="mt-1 text-sm">{actor.fullName} · {roleLabels[actor.role]}</p>
+        <p className="mt-1 text-sm">{actor.fullName} · {actor.jobTitle.trim() || roleLabels[actor.role]}</p>
       </header>
       {notice ? <p className="lab-card p-3 text-sm text-[#545658]">{notice}</p> : null}
       <form action={ownPasswordAction} className="lab-card grid gap-3 p-5">

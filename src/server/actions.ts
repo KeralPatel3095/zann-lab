@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { currentActor } from "@/lib/auth/current";
-import { verifyLocalLogin } from "@/lib/auth/login";
+import { attemptLocalLogin } from "@/lib/auth/login";
 import { signSession } from "@/lib/auth/session";
 import { changeOwnPassword, createStaff, saveDepartment, saveHoliday, setStaffActive, setStaffPassword, updateSetting, updateStage } from "@/lib/domain/admin";
 import { changeDeliveryDate, createCase, holdCase, recordDispatch, recordMissingInformation, releaseCase, resumeCase, type CaseInput } from "@/lib/domain/cases";
@@ -12,6 +12,7 @@ import { commitImport } from "@/lib/domain/transfer";
 import { applyTrackerWorkbook, saveTrackerSheetUrl, syncConfiguredTracker } from "@/lib/domain/tracker-sync";
 import { parseTrackerWorkbook } from "@/lib/sheet/tracker";
 import { markNotificationRead } from "@/lib/domain/reports";
+import { sendChatMessage } from "@/lib/domain/chat";
 import type { ImportField } from "@/lib/import/rows";
 import { importFields } from "@/lib/import/rows";
 import type { StaffRole } from "@/lib/privacy";
@@ -19,10 +20,10 @@ import type { StaffRole } from "@/lib/privacy";
 export async function loginAction(_state: { error: string }, formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "").trim();
-  const user = await verifyLocalLogin(email, password);
-  if (!user) return { error: "Those credentials were not recognized." };
+  const result = await attemptLocalLogin(email, password);
+  if (!result.ok) return { error: result.error };
   const jar = await cookies();
-  jar.set("zann_session", await signSession(user.id), {
+  jar.set("zann_session", await signSession(result.user.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -280,4 +281,11 @@ export async function readNotificationAction(formData: FormData) {
   const id = await actorId();
   await markNotificationRead(id, text(formData, "notification_id"));
   redirect("/notifications");
+}
+
+export async function sendChatAction(_state: { error: string }, formData: FormData) {
+  const id = await actorId();
+  const result = await sendChatMessage(id, text(formData, "body"));
+  if (!result.ok) return { error: result.message };
+  redirect("/chat");
 }

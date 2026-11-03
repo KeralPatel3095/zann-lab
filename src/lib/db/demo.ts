@@ -3,7 +3,9 @@ import { createStaff } from "../domain/admin";
 import { getSql } from "./sql";
 
 export async function seedDemo() {
+  // Production never auto-seeds fiction accounts unless explicitly forced.
   if (process.env.SEED_DEMO === "false") return;
+  if (process.env.NODE_ENV === "production" && process.env.SEED_DEMO !== "true") return;
   const password = process.env.SEED_PASSWORD;
   if (!password) return;
   const sql = await getSql();

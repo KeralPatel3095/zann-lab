@@ -43,20 +43,22 @@ const record: ProductionCase = {
 
 describe("clinic identity", () => {
   it("hides clinic identity from technicians even when the flag is set", () => {
-    expect(canViewClinicIdentity({ role: "technician", canViewClinicIdentity: true })).toBe(false);
-    const view = caseViewForActor({ role: "technician", canViewClinicIdentity: true }, record, clinic);
+    expect(canViewClinicIdentity({ email: "ned.technician@zann-lab.test", role: "technician", canViewClinicIdentity: true })).toBe(false);
+    const view = caseViewForActor({ email: "ned.technician@zann-lab.test", role: "technician", canViewClinicIdentity: true }, record, clinic);
     expect(view.clinic).toBeUndefined();
     expect(JSON.stringify(view)).not.toContain("Northline");
     expect(view.dentistCode).toBe("DR-027");
     expect(view.patientName).toBe("Owen Bradley");
   });
 
-  it("shows clinic identity to the front desk and strips it from technician exports", () => {
-    const desk = caseViewForActor({ role: "front_desk", canViewClinicIdentity: false }, record, clinic);
-    expect(desk.clinic?.clinicName).toBe("Northline Dental");
-    const columns = exportColumnsFor({ role: "technician", canViewClinicIdentity: false });
+  it("shows clinic identity only to Keral, Parneet, and Ana", () => {
+    const allowed = caseViewForActor({ email: "keral.patel@zann-lab.test", role: "backend", canViewClinicIdentity: false }, record, clinic);
+    expect(allowed.clinic?.clinicName).toBe("Northline Dental");
+    expect(canViewClinicIdentity({ email: "parneet.kaur@zann-lab.test", role: "administrator", canViewClinicIdentity: false })).toBe(true);
+    expect(canViewClinicIdentity({ email: "ana.bogdanovic@zann-lab.test", role: "administrator", canViewClinicIdentity: false })).toBe(true);
+    const columns = exportColumnsFor({ email: "ned.technician@zann-lab.test", role: "technician", canViewClinicIdentity: false });
     expect(columns.join(",")).not.toMatch(/dentist_name|clinic_name|clinic_email|clinic_phone/);
-    expect(exportColumnsFor({ role: "front_desk", canViewClinicIdentity: false })).toContain("clinic_name");
+    expect(exportColumnsFor({ email: "ana.bogdanovic@zann-lab.test", role: "administrator", canViewClinicIdentity: false })).toContain("clinic_name");
   });
 
   it("redacts clinic names from technician-facing text and email stays minimal", () => {

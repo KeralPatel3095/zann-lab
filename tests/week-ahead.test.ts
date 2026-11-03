@@ -1,6 +1,8 @@
 import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
-import { dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "../src/lib/scheduling/calendar";
+import { operationalDueAt } from "../src/lib/office-rules";
+import { belongsOnFinishToday, dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "../src/lib/scheduling/calendar";
+import { officeCode } from "../src/lib/sheet/tracker";
 
 describe("week ahead window", () => {
   it("on Wednesday lists Thursday, Friday, and Monday to Friday of next week", () => {
@@ -37,5 +39,89 @@ describe("week ahead window", () => {
     expect(window.start.weekday).toBeLessThanOrEqual(5);
     expect(window.start.weekday).toBeGreaterThanOrEqual(1);
     expect(window.end.weekday).toBe(5);
+  });
+});
+
+describe("finish today membership", () => {
+  const monday = DateTime.fromISO("2026-11-02T12:00:00", { zone: LAB_ZONE });
+
+  it("on 2 Nov includes dues through 3 Nov", () => {
+    expect(
+      belongsOnFinishToday({
+        dueAt: "2026-11-02T16:30:00",
+        trackerDue: "2 Nov",
+        now: monday,
+      }),
+    ).toBe(true);
+    expect(
+      belongsOnFinishToday({
+        dueAt: "2026-11-03T16:30:00",
+        trackerDue: "3 Nov",
+        now: monday,
+      }),
+    ).toBe(true);
+  });
+
+  it("on 2 Nov includes morning 4 Nov dues only", () => {
+    expect(
+      belongsOnFinishToday({
+        dueAt: "2026-11-04T16:30:00",
+        trackerDue: "Nov 4 by 9am",
+        now: monday,
+      }),
+    ).toBe(true);
+    expect(
+      belongsOnFinishToday({
+        dueAt: "2026-11-04T16:30:00",
+        trackerDue: "Nov 4 by 3pm",
+        now: monday,
+      }),
+    ).toBe(false);
+  });
+
+  it("does not include a case only because it was received today", () => {
+    expect(
+      belongsOnFinishToday({
+        dueAt: "2026-11-20T16:30:00",
+        sheetSectionAt: "2026-11-02T12:00:00",
+        trackerDue: "Nov 20",
+        now: monday,
+      }),
+    ).toBe(false);
+  });
+
+  it("includes a Nov 4 due on the work day before (3 Nov)", () => {
+    expect(
+      belongsOnFinishToday({
+        dueAt: "2026-11-04T16:30:00",
+        trackerDue: "Nov 4",
+        now: DateTime.fromISO("2026-11-03T09:00:00", { zone: LAB_ZONE }),
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps the sheet due label for a future due date", () => {
+    expect(dueSheetLabel("Nov 4 by 3pm", "2026-11-04")).toBe("Nov 4 by 3pm");
+  });
+
+  it("lists early-finish offices on the weekday before send (due 3 Nov → send 2 Nov → 30 Oct)", () => {
+    const code = officeCode("Monarch Dentistry - Morrison");
+    const sheetDue = "2026-11-03T16:30:00";
+    const opDue = operationalDueAt(sheetDue, code);
+    expect(opDue?.toISODate()).toBe("2026-11-02");
+    expect(workDayBeforeDue(opDue!, "3 Nov").toISODate()).toBe("2026-10-30");
+    const friday = DateTime.fromISO("2026-10-30T09:00:00", { zone: LAB_ZONE });
+    expect(
+      belongsOnFinishToday({
+        dueAt: sheetDue,
+        trackerDue: "3 Nov",
+        operationalDue: opDue,
+        now: friday,
+      }),
+    ).toBe(true);
+    const ahead = weekAheadWindow(friday);
+    const workDay = workDayBeforeDue(opDue!, "3 Nov");
+    expect(workDay >= ahead.start && workDay <= ahead.end).toBe(false);
+    expect(dueSheetLabel("3 Nov", sheetDue)).toBe("3 Nov");
   });
 });

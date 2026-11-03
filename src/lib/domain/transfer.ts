@@ -4,11 +4,11 @@ import { LAB_ZONE } from "../scheduling/calendar";
 import { classifyImportRow, mapRow, suggestMapping, type ImportField } from "../import/rows";
 import { exportColumnsFor } from "../privacy";
 import { createCase, type CaseInput } from "./cases";
-import { fail, runAs, type ActionResult } from "./common";
+import { fail, hasBackendAccess, runAs, type ActionResult } from "./common";
 
 export async function previewSpreadsheet(userId: string, filename: string, bytes: Buffer) {
   return runAs(userId, async (tx, actor) => {
-    if (actor.role !== "administrator" && actor.role !== "front_desk") return { ok: false as const, message: "Not allowed" };
+    if (!hasBackendAccess(actor)) return { ok: false as const, message: "Not allowed" };
     const parsed = await readTable(filename, bytes);
     const mapping = suggestMapping(parsed.headers);
     const existing = await tx<{ case_number: string }[]>`select case_number from cases`;
@@ -25,7 +25,7 @@ export async function previewSpreadsheet(userId: string, filename: string, bytes
 export async function commitImport(userId: string, filename: string, bytes: Buffer, mapping: Record<string, ImportField | "">, mode: "skip_existing" | "fill_blanks", historical: boolean): Promise<ActionResult<{ created: number; duplicates: number; invalid: number; updated: number }>> {
   try {
     const actor = await runAs(userId, async (_tx, current) => current);
-    if (actor.role !== "administrator" && actor.role !== "front_desk") return { ok: false, message: "Not allowed" };
+    if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
     const parsed = await readTable(filename, bytes);
     const summary = { created: 0, duplicates: 0, invalid: 0, updated: 0 };
     for (const values of parsed.rows) {

@@ -1,9 +1,9 @@
 import { hashPassword, verifyPassword } from "../auth/password";
 import { getSql } from "../db/sql";
 import type { StaffRole } from "../privacy";
-import { fail, hasRole, runAs, type ActionResult } from "./common";
+import { fail, hasBackendAccess, runAs, type ActionResult } from "./common";
 
-const roles = new Set<StaffRole>(["administrator", "front_desk", "technician", "department_lead", "production_manager"]);
+const roles = new Set<StaffRole>(["administrator", "backend", "front_desk", "technician", "department_lead", "production_manager"]);
 
 export async function createStaff(actorId: string, input: {
   fullName: string;
@@ -17,10 +17,10 @@ export async function createStaff(actorId: string, input: {
 }): Promise<ActionResult> {
   try {
     const actor = await runAs(actorId, async (_tx, current) => current);
-    if (!hasRole(actor, ["administrator"])) return { ok: false, message: "Not allowed" };
+    if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
     if (!roles.has(input.role)) return { ok: false, message: "Choose a valid role." };
     if (input.password.length < 10) return { ok: false, message: "Use a password of at least 10 characters." };
-    const clinic = input.role === "technician" ? false : input.role === "administrator" || input.role === "front_desk" ? true : Boolean(input.canViewClinicIdentity);
+    const clinic = input.role !== "technician";
     const passwordHash = await hashPassword(input.password);
     const sql = await getSql();
     const [profile] = await sql<{ id: string }[]>`
@@ -46,6 +46,7 @@ export async function createStaff(actorId: string, input: {
 export async function changeOwnPassword(actorId: string, currentPassword: string, nextPassword: string): Promise<ActionResult> {
   try {
     const actor = await runAs(actorId, async (_tx, current) => current);
+    if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
     if (nextPassword.length < 10) return { ok: false, message: "Use a password of at least 10 characters." };
     if (nextPassword === currentPassword) return { ok: false, message: "Choose a password that is different from the current one." };
     const sql = await getSql();
@@ -69,7 +70,7 @@ export async function changeOwnPassword(actorId: string, currentPassword: string
 export async function setStaffPassword(actorId: string, userId: string, password: string): Promise<ActionResult> {
   try {
     const actor = await runAs(actorId, async (_tx, current) => current);
-    if (!hasRole(actor, ["administrator"])) return { ok: false, message: "Not allowed" };
+    if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
     if (password.length < 10) return { ok: false, message: "Use a password of at least 10 characters." };
     const sql = await getSql();
     const [person] = await sql<{ id: string }[]>`select id from profiles where id = ${userId} and active`;
@@ -89,7 +90,7 @@ export async function setStaffPassword(actorId: string, userId: string, password
 export async function setStaffActive(actorId: string, userId: string, active: boolean): Promise<ActionResult> {
   try {
     return await runAs(actorId, async (tx, actor) => {
-      if (actor.role !== "administrator") return { ok: false, message: "Not allowed" };
+      if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
       if (actor.id === userId && !active) return { ok: false, message: "You cannot disable your own account." };
       await tx`update profiles set active = ${active} where id = ${userId}`;
       return { ok: true as const };
@@ -102,7 +103,7 @@ export async function setStaffActive(actorId: string, userId: string, active: bo
 export async function updateStage(actorId: string, stageId: string, input: { workMinutes: number; elapsedMinutes: number; skippable: boolean; active: boolean }): Promise<ActionResult> {
   try {
     return await runAs(actorId, async (tx, actor) => {
-      if (actor.role !== "administrator") return { ok: false, message: "Not allowed" };
+      if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
       await tx`
         update workflow_stages
         set estimated_work_minutes = ${input.workMinutes}, elapsed_minutes = ${input.elapsedMinutes},
@@ -119,7 +120,7 @@ export async function updateStage(actorId: string, stageId: string, input: { wor
 export async function updateSetting(actorId: string, key: string, value: string): Promise<ActionResult> {
   try {
     return await runAs(actorId, async (tx, actor) => {
-      if (actor.role !== "administrator") return { ok: false, message: "Not allowed" };
+      if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
       const allowed = new Set(["reminder_local_time", "dispatch_buffer_minutes", "due_soon_hours", "email_notifications_enabled", "email_include_patient_details", "case_number_prefix"]);
       if (!allowed.has(key)) return { ok: false, message: "That setting cannot be changed here." };
       await tx`update production_settings set setting_value = ${value}, updated_by = ${actor.id}, updated_at = now() where setting_key = ${key}`;
@@ -133,7 +134,7 @@ export async function updateSetting(actorId: string, key: string, value: string)
 export async function saveHoliday(actorId: string, date: string, working: boolean, description: string): Promise<ActionResult> {
   try {
     return await runAs(actorId, async (tx, actor) => {
-      if (actor.role !== "administrator") return { ok: false, message: "Not allowed" };
+      if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
       await tx`
         insert into business_calendar (calendar_date, is_working_day, description)
         values (${date}, ${working}, ${description.slice(0, 160)})
@@ -149,7 +150,7 @@ export async function saveHoliday(actorId: string, date: string, working: boolea
 export async function saveDepartment(actorId: string, input: { id?: string; name: string; description: string; active: boolean }): Promise<ActionResult> {
   try {
     return await runAs(actorId, async (tx, actor) => {
-      if (actor.role !== "administrator") return { ok: false, message: "Not allowed" };
+      if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
       if (input.id) {
         await tx`update departments set name = ${input.name}, description = ${input.description}, active = ${input.active} where id = ${input.id}`;
       } else {
@@ -164,7 +165,7 @@ export async function saveDepartment(actorId: string, input: { id?: string; name
 
 export async function adminSnapshot(actorId: string) {
   return runAs(actorId, async (tx, actor) => {
-    if (actor.role !== "administrator") return null;
+    if (!hasBackendAccess(actor)) return null;
     const [staff, departments, settings, stages, holidays] = await Promise.all([
       tx<{ id: string; full_name: string; email: string; role: string; active: boolean; can_view_clinic_identity: boolean }[]>`
         select id, full_name, email, role::text as role, active, can_view_clinic_identity from profiles

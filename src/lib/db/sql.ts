@@ -24,9 +24,11 @@ export async function getSql(): Promise<Sql> {
   await ensureEmbeddedPostgres();
   if (!globalSql.__zannSql) {
     const options = {
-      max: 10,
-      idle_timeout: 20,
-      connect_timeout: 30,
+      // Embedded Postgres has a low connection ceiling; keep the pool small.
+      max: usesEmbeddedDatabase() ? 3 : 10,
+      idle_timeout: 10,
+      max_lifetime: 60 * 5,
+      connect_timeout: 20,
       prepare: false,
       types: { date: dateType },
       onnotice: () => undefined,
@@ -92,6 +94,7 @@ export function safeDatabaseMessage(error: unknown) {
     "Restricted clinic identity",
     "Notifications cannot be rewritten",
     "Invalid notification",
+    "Enter a message",
     "duplicate key",
   ];
   if (known.some((prefix) => message.includes(prefix))) {

@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev:local": "next dev --port 3000",
+    "tunnel": "npx --yes cloudflared tunnel --url http://127.0.0.1:3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "setup": "tsx src/lib/db/setup.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "go-live:check": "tsx scripts/go-live-check.ts"
   },
   "dependencies": {
     "embedded-postgres": "^18.4.0-beta.17",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@netlify/plugin-nextjs": "^5.15.1",
     "@tailwindcss/postcss": "^4",
     "@types/luxon": "^3.7.6",
     "@types/node": "^20",
