@@ -9,7 +9,7 @@ import { changeOwnPassword, createStaff, saveDepartment, saveHoliday, setStaffAc
 import { changeDeliveryDate, createCase, holdCase, recordDispatch, recordMissingInformation, releaseCase, resumeCase, type CaseInput } from "@/lib/domain/cases";
 import { assignTask, recordQuality, transitionTask } from "@/lib/domain/tasks";
 import { commitImport } from "@/lib/domain/transfer";
-import { applyTrackerWorkbook, saveTrackerSheetUrl, syncConfiguredTracker } from "@/lib/domain/tracker-sync";
+import { applyTrackerWorkbook, saveTrackerSheetUrl, syncConfiguredTracker, trackerStatus } from "@/lib/domain/tracker-sync";
 import { parseTrackerWorkbook } from "@/lib/sheet/tracker";
 import { markNotificationRead } from "@/lib/domain/reports";
 import { sendChatMessage } from "@/lib/domain/chat";
@@ -182,7 +182,19 @@ export async function syncTrackerAction(formData: FormData) {
   if (!saved.ok) redirect(`/import?notice=${encodeURIComponent(saved.message)}`);
   if (!text(formData, "sheet_url").trim()) redirect("/import?notice=Automatic%20sheet%20updates%20are%20off.");
   await syncConfiguredTracker();
-  redirect("/import");
+  const status = await trackerStatus(id);
+  redirect(`/import?notice=${encodeURIComponent(status.message || "Sync finished.")}`);
+}
+
+export async function uploadTrackerAction(formData: FormData) {
+  const id = await actorId();
+  const file = formData.get("file");
+  if (!(file instanceof File) || !file.size) {
+    redirect(`/import?notice=${encodeURIComponent("Choose an Excel (.xlsx) export of the tracker.")}`);
+  }
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const result = await applyTrackerWorkbook(id, bytes);
+  redirect(`/import?notice=${encodeURIComponent(result.ok ? result.message : result.message)}`);
 }
 
 export async function importAction(_state: { message: string }, formData: FormData) {
