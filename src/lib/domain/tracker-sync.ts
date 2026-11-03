@@ -217,22 +217,8 @@ function syncMessage(counts: SyncCounts) {
 async function downloadSpreadsheet(url: string): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
   const id = spreadsheetIdFromInput(url);
   if (!id) return { ok: false, message: "Paste the full Google Sheets link." };
-  try {
-    const response = await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/export?format=xlsx`, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(60_000),
-    });
-    const type = response.headers.get("content-type") ?? "";
-    if (!response.ok || type.includes("text/html") || type.includes("application/json")) {
-      return {
-        ok: false,
-        message: "This computer cannot read that sheet yet. In Google Sheets choose Share, set General access to Anyone with the link, and choose Viewer. Then use Save and sync again.",
-      };
-    }
-    return { ok: true, bytes: Buffer.from(await response.arrayBuffer()) };
-  } catch {
-    return { ok: false, message: "The case tracker could not be reached." };
-  }
+  const { downloadGoogleSheetXlsx } = await import("../integrations/google-sheet");
+  return downloadGoogleSheetXlsx(id);
 }
 
 async function readSetting(key: string) {

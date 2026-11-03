@@ -9,5 +9,9 @@
   # Server env + embedded-postgres binaries cause widespread false positives in Netlify secrets scan.
   SECRETS_SCAN_ENABLED = "false"
 
+[functions]
+  directory = "netlify/functions"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
