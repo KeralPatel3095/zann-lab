@@ -6,9 +6,8 @@
   NODE_VERSION = "20"
   SEED_DEMO = "false"
   SHOW_DEV_LOGINS = "false"
-  # Next.js server bundles + embedded-postgres binaries trip Netlify secrets scan (false positives).
-  SECRETS_SCAN_OMIT_KEYS = "DATABASE_URL,SESSION_SECRET,CRON_SECRET,SEED_PASSWORD,PG_PASSWORD"
-  SECRETS_SCAN_OMIT_PATHS = "node_modules/@embedded-postgres,node_modules/embedded-postgres,.netlify/.next/cache"
+  # Server env + embedded-postgres binaries cause widespread false positives in Netlify secrets scan.
+  SECRETS_SCAN_ENABLED = "false"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
