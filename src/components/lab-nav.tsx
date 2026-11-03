@@ -46,7 +46,7 @@ export function LabChrome({
         <div className="lab-nav-wrap">
           <nav className="lab-nav" aria-label="Laboratory">
             {links.map((link) => (
-              <Link key={link.href} href={link.href} className={link.href === active ? "is-active" : undefined}>
+              <Link key={link.href} href={link.href} prefetch className={link.href === active ? "is-active" : undefined}>
                 {link.label}
               </Link>
             ))}
@@ -80,7 +80,7 @@ export function LabChrome({
           <p className="lab-drawer-role">{role}</p>
           <nav aria-label="Laboratory">
             {links.map((link) => (
-              <Link key={link.href} href={link.href} className={link.href === active ? "is-active" : undefined}>
+              <Link key={link.href} href={link.href} prefetch className={link.href === active ? "is-active" : undefined}>
                 {link.label}
               </Link>
             ))}

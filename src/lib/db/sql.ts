@@ -57,13 +57,15 @@ export async function getSql(): Promise<Sql> {
 
 async function waitForConnection(sql: Sql) {
   let last: unknown;
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  const attempts = usesEmbeddedDatabase() ? 40 : 8;
+  const delayMs = usesEmbeddedDatabase() ? 250 : 100;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       await sql`select 1 as ok`;
       return;
     } catch (error) {
       last = error;
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
   throw last instanceof Error ? last : new Error("PostgreSQL did not accept connections");

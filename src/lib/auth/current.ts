@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { runAs } from "../domain/common";
 import { readSession, readSupabaseSubject } from "./session";
 
-export async function currentActor() {
+/** One DB actor lookup per request (layout + page share this). */
+export const currentActor = cache(async () => {
   const jar = await cookies();
   const token = jar.get("zann_session")?.value;
   const supabaseToken = jar.get("sb-access-token")?.value;
@@ -14,10 +16,10 @@ export async function currentActor() {
   } catch {
     return null;
   }
-}
+});
 
-export async function requireActorPage() {
+export const requireActorPage = cache(async () => {
   const actor = await currentActor();
   if (!actor) redirect("/login");
   return actor;
-}
+});

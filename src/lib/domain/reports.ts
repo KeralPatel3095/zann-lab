@@ -21,9 +21,118 @@ export type FinishTodayCase = {
   clinic_name: string | null;
 };
 
+/** Lean Today board — only the queries the home page needs. */
+export async function todayBoard(userId: string) {
+  return runAs(userId, async (tx, actor) => {
+    const ahead = weekAheadWindow();
+    const finishToday = await loadFinishToday(tx, actor);
+    const dueStart = ahead.start.plus({ days: 1 }).toISODate() ?? "";
+    const dueEnd = ahead.end.plus({ days: 4 + EARLY_FINISH_DAYS }).toISODate() ?? "";
+    const finishWeek = await tx<{
+      id: string;
+      case_number: string;
+      patient_name: string;
+      pan_number: string;
+      case_type: string;
+      requested_delivery_at: Date | null;
+      overall_status: string;
+      tracker_status: string;
+      tracker_due: string;
+      dentist_code: string;
+    }[]>`
+      select id, case_number, patient_name, pan_number, case_type, requested_delivery_at,
+             overall_status::text as overall_status, tracker_status, tracker_due, dentist_code
+      from cases
+      where overall_status = 'in_production'
+        and not historical
+        and requested_delivery_at is not null
+        and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
+      order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
+    `;
+    const now = DateTime.now().setZone(LAB_ZONE);
+    const weekdayWeek = finishWeek.filter((row) => {
+      if (!canViewCaseType(actor, row.case_type)) return false;
+      if (!row.requested_delivery_at) return false;
+      const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
+      if (!opDue) return false;
+      if (
+        belongsOnFinishToday({
+          dueAt: row.requested_delivery_at,
+          trackerDue: row.tracker_due,
+          operationalDue: opDue,
+          now,
+        })
+      ) {
+        return false;
+      }
+      const workDay = workDayBeforeDue(opDue, row.tracker_due);
+      return workDay >= ahead.start && workDay <= ahead.end;
+    });
+    const myTasks = await tx<{ task_status: string; total: number }[]>`
+      select task_status::text as task_status, count(*)::int as total
+      from production_tasks
+      where assigned_user_id = ${actor.id}
+        and task_status not in ('completed', 'cancelled')
+      group by task_status
+    `;
+    return { finishToday, finishWeek: weekdayWeek, myTasks };
+  });
+}
+
 export async function dashboard(userId: string) {
   return runAs(userId, async (tx, actor) => {
     const zone = "America/Toronto";
+    const ahead = weekAheadWindow();
+    const finishToday = await loadFinishToday(tx, actor);
+    const dueStart = ahead.start.plus({ days: 1 }).toISODate() ?? "";
+    const dueEnd = ahead.end.plus({ days: 4 + EARLY_FINISH_DAYS }).toISODate() ?? "";
+    const finishWeekRows = await tx<{
+      id: string;
+      case_number: string;
+      patient_name: string;
+      pan_number: string;
+      case_type: string;
+      requested_delivery_at: Date | null;
+      overall_status: string;
+      tracker_status: string;
+      tracker_due: string;
+      dentist_code: string;
+    }[]>`
+      select id, case_number, patient_name, pan_number, case_type, requested_delivery_at,
+             overall_status::text as overall_status, tracker_status, tracker_due, dentist_code
+      from cases
+      where overall_status = 'in_production'
+        and not historical
+        and requested_delivery_at is not null
+        and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
+      order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
+    `;
+    const now = DateTime.now().setZone(LAB_ZONE);
+    const finishWeek = finishWeekRows.filter((row) => {
+      if (!canViewCaseType(actor, row.case_type)) return false;
+      if (!row.requested_delivery_at) return false;
+      const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
+      if (!opDue) return false;
+      if (
+        belongsOnFinishToday({
+          dueAt: row.requested_delivery_at,
+          trackerDue: row.tracker_due,
+          operationalDue: opDue,
+          now,
+        })
+      ) {
+        return false;
+      }
+      const workDay = workDayBeforeDue(opDue, row.tracker_due);
+      return workDay >= ahead.start && workDay <= ahead.end;
+    });
+    const myTasks = await tx<{ task_status: string; total: number }[]>`
+      select task_status::text as task_status, count(*)::int as total
+      from production_tasks
+      where assigned_user_id = ${actor.id}
+        and task_status not in ('completed', 'cancelled')
+      group by task_status
+    `;
     const [counts] = await tx<{
       active_cases: number;
       received_today: number;
@@ -112,57 +221,20 @@ export async function dashboard(userId: string) {
         (select count(*) from cases where overall_status in ('dispatched', 'delivered'))::int as dispatched_cases
     `;
     const tomorrow = DateTime.now().setZone(LAB_ZONE).plus({ days: 1 }).toISODate();
-    const ahead = weekAheadWindow();
-    const finishToday = await loadFinishToday(tx, actor);
-    const dueStart = ahead.start.plus({ days: 1 }).toISODate() ?? "";
-    const dueEnd = ahead.end.plus({ days: 4 + EARLY_FINISH_DAYS }).toISODate() ?? "";
-    const finishWeek = await tx<{
-      id: string;
-      case_number: string;
-      patient_name: string;
-      pan_number: string;
-      case_type: string;
-      requested_delivery_at: Date | null;
-      overall_status: string;
-      tracker_status: string;
-      tracker_due: string;
-      dentist_code: string;
-    }[]>`
-      select id, case_number, patient_name, pan_number, case_type, requested_delivery_at,
-             overall_status::text as overall_status, tracker_status, tracker_due, dentist_code
-      from cases
-      where overall_status = 'in_production'
-        and not historical
-        and requested_delivery_at is not null
-        and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
-      order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
-    `;
-    const now = DateTime.now().setZone(LAB_ZONE);
-    const weekdayWeek = finishWeek.filter((row) => {
-      if (!canViewCaseType(actor, row.case_type)) return false;
-      if (!row.requested_delivery_at) return false;
-      const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
-      if (!opDue) return false;
-      if (
-        belongsOnFinishToday({
-          dueAt: row.requested_delivery_at,
-          trackerDue: row.tracker_due,
-          operationalDue: opDue,
-          now,
-        })
-      ) {
-        return false;
-      }
-      const workDay = workDayBeforeDue(opDue, row.tracker_due);
-      return workDay >= ahead.start && workDay <= ahead.end;
-    });
-    const myTasks = await tx<{ task_status: string; total: number }[]>`
-      select task_status::text as task_status, count(*)::int as total
-      from production_tasks
-      where assigned_user_id = ${actor.id}
-      group by task_status
-    `;
-    return { actor, counts: counts ?? null, departments, technicians, turnaround, delivery: delivery ?? { on_time: 0, total: 0 }, bottlenecks, quality: quality ?? null, myTasks, finishToday, finishWeek: weekdayWeek, finishOn: tomorrow };
+    return {
+      actor,
+      counts: counts ?? null,
+      departments,
+      technicians,
+      turnaround,
+      delivery: delivery ?? { on_time: 0, total: 0 },
+      bottlenecks,
+      quality: quality ?? null,
+      myTasks,
+      finishToday,
+      finishWeek,
+      finishOn: tomorrow,
+    };
   });
 }
 

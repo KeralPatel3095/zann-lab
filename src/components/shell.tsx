@@ -1,6 +1,5 @@
 import { LabChrome } from "@/components/lab-nav";
 import { hasBackendAccess, hasManagementAccess, hasReceiptsAccess } from "@/lib/domain/common";
-import { unreadChatCount } from "@/lib/domain/chat";
 import { roleLabels } from "@/lib/labels";
 import type { Actor } from "@/lib/privacy";
 
@@ -20,13 +19,13 @@ const links = [
 ];
 
 export async function Shell({ actor, children }: { actor: Actor; children: React.ReactNode }) {
-  const unread = await unreadChatCount(actor.id);
+  // Skip per-navigation chat badge query — it added a full DB round-trip on every click.
   const backend = hasBackendAccess(actor);
   const receipts = hasReceiptsAccess(actor);
   const managers = hasManagementAccess(actor);
-  const visible = links
-    .filter((link) => (!link.backendOnly || backend) && (!link.receiptsOnly || receipts) && (!link.managersOnly || managers))
-    .map((link) => (link.href === "/chat" && unread > 0 ? { ...link, label: "Chat · new" } : link));
+  const visible = links.filter(
+    (link) => (!link.backendOnly || backend) && (!link.receiptsOnly || receipts) && (!link.managersOnly || managers),
+  );
   return (
     <div className="lab-app">
       <LabChrome links={visible} name={actor.fullName} role={actor.jobTitle.trim() || roleLabels[actor.role] || actor.role} />

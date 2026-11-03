@@ -3,13 +3,13 @@ import { DateTime } from "luxon";
 import { PanMark, ProductMark } from "@/components/case-marks";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
-import { dashboard } from "@/lib/domain/reports";
+import { todayBoard } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
 
 export default async function HomePage() {
   const actor = await requireActorPage();
-  const data = await dashboard(actor.id);
+  const data = await todayBoard(actor.id);
   const showOffice = canViewClinicIdentity(actor);
   const today = DateTime.now().setZone(LAB_ZONE);
   const openTasks = data.myTasks.reduce((sum, row) => sum + row.total, 0);
