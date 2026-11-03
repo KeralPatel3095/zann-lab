@@ -23,9 +23,12 @@ export async function closeSql() {
 export async function getSql(): Promise<Sql> {
   await ensureEmbeddedPostgres();
   if (!globalSql.__zannSql) {
+    if (!usesEmbeddedDatabase() && !process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not configured for this host");
+    }
     const options = {
       // Embedded Postgres has a low connection ceiling; keep the pool small.
-      max: usesEmbeddedDatabase() ? 3 : 10,
+      max: usesEmbeddedDatabase() ? 3 : 1,
       idle_timeout: 10,
       max_lifetime: 60 * 5,
       connect_timeout: 20,
@@ -42,7 +45,11 @@ export async function getSql(): Promise<Sql> {
           username: embeddedConfig().user,
           password: embeddedConfig().password,
         })
-      : postgres(process.env.DATABASE_URL as string, options);
+      : postgres(process.env.DATABASE_URL as string, {
+          ...options,
+          // Supabase / hosted Postgres require TLS from Netlify and other hosts.
+          ssl: "require",
+        });
     await waitForConnection(globalSql.__zannSql);
   }
   return globalSql.__zannSql;

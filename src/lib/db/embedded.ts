@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import EmbeddedPostgres from "embedded-postgres";
 
 export type EmbeddedConfig = {
   port: number;
@@ -10,7 +9,8 @@ export type EmbeddedConfig = {
   user: string;
 };
 
-let instance: EmbeddedPostgres | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let instance: any = null;
 let starting: Promise<void> | null = null;
 
 export function embeddedConfig(): EmbeddedConfig {
@@ -23,8 +23,12 @@ export function embeddedConfig(): EmbeddedConfig {
   };
 }
 
+/** Hosted platforms must use DATABASE_URL — never spawn embedded Postgres. */
 export function usesEmbeddedDatabase() {
-  return !process.env.DATABASE_URL;
+  if (process.env.DATABASE_URL) return false;
+  if (process.env.NETLIFY === "true") return false;
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
+  return true;
 }
 
 export async function ensureEmbeddedPostgres() {
@@ -34,6 +38,7 @@ export async function ensureEmbeddedPostgres() {
 }
 
 async function startEmbedded() {
+  const { default: EmbeddedPostgres } = await import("embedded-postgres");
   const config = embeddedConfig();
   fs.mkdirSync(config.databaseDir, { recursive: true });
   const initialized = fs.existsSync(path.join(config.databaseDir, "PG_VERSION"));
