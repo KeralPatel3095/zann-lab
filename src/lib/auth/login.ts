@@ -61,8 +61,8 @@ export async function attemptLocalLogin(email: string, password: string): Promis
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (/too many clients|connection|ECONNREFUSED|timeout|does not exist/i.test(message)) {
-      return { ok: false, error: "The lab database is busy or unavailable. Restart the app and try again." };
+    if (/too many clients|max clients|EMAXCONN|connection|ECONNREFUSED|timeout|does not exist/i.test(message)) {
+      return { ok: false, error: "The lab database is busy or unavailable. Wait a minute and try again." };
     }
     return { ok: false, error: "Sign-in could not be completed. Try again." };
   }

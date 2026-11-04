@@ -32,7 +32,7 @@ That creates the lab staff accounts (Keral, Ana, Ned, Zoca, Parneet, Negar). The
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_URL` | Supabase URI (server-only) |
+| `DATABASE_URL` | Supabase URI (server-only). Prefer **Transaction pooler** port `6543` for Netlify. |
 | `SESSION_SECRET` | long random string |
 | `CRON_SECRET` | long random string |
 | `APP_URL` | `https://your-netlify-site.netlify.app` |

@@ -28,10 +28,11 @@ export async function getSql(): Promise<Sql> {
     }
     const options = {
       // Embedded Postgres has a low connection ceiling; keep the pool small.
+      // Hosted/Netlify: one connection per isolate; release quickly for Supabase pooler limits.
       max: usesEmbeddedDatabase() ? 3 : 1,
-      idle_timeout: 10,
-      max_lifetime: 60 * 5,
-      connect_timeout: 20,
+      idle_timeout: usesEmbeddedDatabase() ? 10 : 5,
+      max_lifetime: usesEmbeddedDatabase() ? 60 * 5 : 60 * 2,
+      connect_timeout: 15,
       prepare: false,
       types: { date: dateType },
       onnotice: () => undefined,
