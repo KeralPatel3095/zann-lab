@@ -90,19 +90,24 @@ export async function syncConfiguredTracker() {
   await putSetting("tracker_sync_message", result.ok ? result.message : result.message);
 }
 
-/** Local Excel file (PC sync) first, then Google Sheet URL. */
+/** Prefer live Apps Script / Google URL; local Excel is only a backup. */
 export async function loadTrackerBytes(): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
+  const url = await readSetting("tracker_sheet_url");
+  const { isAppsScriptBridgeUrl } = await import("../integrations/google-sheet");
+  if (url.trim() && (isAppsScriptBridgeUrl(url) || spreadsheetIdFromInput(url))) {
+    const remote = await downloadSpreadsheet(url);
+    if (remote.ok) return remote;
+    const local = await readLocalTrackerFile();
+    if (local?.ok) return local;
+    return remote;
+  }
   const local = await readLocalTrackerFile();
   if (local) return local;
-  const url = await readSetting("tracker_sheet_url");
-  if (!url.trim()) {
-    return {
-      ok: false,
-      message:
-        "No tracker source yet. On this PC put the Excel export at data/tracker.xlsx (or set TRACKER_LOCAL_FILE), or save a Google Sheet link on Import.",
-    };
-  }
-  return downloadSpreadsheet(url);
+  return {
+    ok: false,
+    message:
+      "No tracker source yet. Paste the Apps Script /exec?key=… URL on Import (permanent live sync).",
+  };
 }
 
 async function readLocalTrackerFile(): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string } | null> {

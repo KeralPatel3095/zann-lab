@@ -15,41 +15,36 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
         <p className="lab-kicker">Case tracker</p>
         <h1 className="mt-1 text-3xl">Live Google Sheet</h1>
         <p className="mt-1 text-sm">
-          Your Workspace sheet blocks direct download. Use the free Apps Script bridge below (no Google Cloud billing). The site re-syncs about every 15 minutes.
+          Permanent free sync: an Apps Script inside your sheet pushes data to the lab every ~15 minutes. No Google Cloud
+          billing.
         </p>
       </header>
       {feedback ? <p className="lab-card p-4 text-sm">{feedback}</p> : null}
 
       <section className="lab-card grid gap-2 p-5 text-sm">
-        <h2 className="text-lg">Setup once (free)</h2>
+        <h2 className="text-lg">Permanent setup (do once)</h2>
         <ol className="list-decimal space-y-1.5 pl-5">
-          <li>Open your tracker Google Sheet → <strong>Extensions → Apps Script</strong>.</li>
+          <li>Open the tracker Google Sheet → <strong>Extensions → Apps Script</strong>.</li>
           <li>
-            Delete any sample code. Paste the script from the lab repo file{" "}
-            <code>docs/google-apps-script-bridge.js</code>.
+            Delete old code. Paste everything from <code>docs/google-apps-script-bridge.js</code> (secret is already filled).
           </li>
           <li>
-            Change <code>YOUR_SECRET</code> to your Netlify <code>CRON_SECRET</code> value (already set), or any long
-            password — then also set Netlify <code>TRACKER_BRIDGE_SECRET</code> to the same value.
+            <strong>Deploy → New deployment → Web app</strong> (or Manage deployments → pencil → <strong>New version</strong>).
           </li>
           <li>
-            Click <strong>Deploy → New deployment → Web app</strong>. Execute as: <strong>Me</strong>. Who has access:{" "}
-            <strong>Anyone</strong>. Deploy.
+            Execute as: <strong>Me</strong>. Who has access: <strong>Anyone</strong>. Deploy and allow permissions.
           </li>
-          <li>Copy the Web app URL. It looks like <code>https://script.google.com/macros/s/…/exec</code>.</li>
           <li>
-            Paste below: <code>https://script.google.com/macros/s/…/exec?key=YOUR_SECRET</code> → Save and sync.
+            Test the URL in a browser — you must see JSON starting with <code>{`{"ok":true`}</code>.
           </li>
+          <li>Paste that full URL (with <code>?key=…</code>) below → <strong>Save and sync</strong>.</li>
         </ol>
-        <p>
-          The sheet itself can stay <strong>Restricted</strong>. Only callers who know the secret key can pull data.
-        </p>
       </section>
 
       <form action={syncTrackerAction} className="lab-card grid gap-3 p-5">
-        <h2 className="text-lg">Bridge / sheet link</h2>
+        <h2 className="text-lg">Apps Script URL</h2>
         <label>
-          Apps Script web app URL (with ?key=…)
+          Web app URL
           <input
             name="sheet_url"
             defaultValue={status.url}
@@ -60,8 +55,8 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
       </form>
 
       <form action={uploadTrackerAction} className="lab-card grid gap-3 p-5">
-        <h2 className="text-lg">Backup: upload Excel once</h2>
-        <p className="text-sm">Only if the bridge is not ready yet. Not live day-to-day.</p>
+        <h2 className="text-lg">Emergency Excel upload</h2>
+        <p className="text-sm">Only if the bridge is down. Not the permanent day-to-day path.</p>
         <label>
           Tracker Excel file
           <input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />

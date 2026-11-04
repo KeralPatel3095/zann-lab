@@ -6,7 +6,7 @@ export function isAppsScriptBridgeUrl(value: string) {
 
 /**
  * Download tracker bytes from:
- * 1) Apps Script bridge URL (free, no Google Cloud Console)
+ * 1) Apps Script bridge URL (reads the sheet from inside Google — permanent + free)
  * 2) Service account Drive export
  * 3) Anonymous Google /export URL
  */
@@ -21,7 +21,7 @@ export async function downloadTrackerSource(
   const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   const spreadsheetId = idMatch?.[1] || (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed) ? trimmed : null);
   if (!spreadsheetId) {
-    return { ok: false, message: "Paste the Google Sheet link or the Apps Script web app URL." };
+    return { ok: false, message: "Paste the Apps Script web app URL (.../exec?key=...)." };
   }
   return downloadGoogleSheetXlsx(spreadsheetId);
 }
@@ -42,7 +42,7 @@ export async function downloadGoogleSheetXlsx(
       return {
         ok: false,
         message:
-          "Direct Google Sheet export is blocked. Use the free Apps Script bridge on the Import page (no Google Cloud billing), or a service account.",
+          "Direct Google export is blocked. Use the Apps Script bridge URL from Import (docs/google-apps-script-bridge.js).",
       };
     }
     return { ok: true, bytes: Buffer.from(await response.arrayBuffer()) };
@@ -60,28 +60,58 @@ async function downloadViaAppsScriptBridge(
     if (expected && !target.searchParams.get("key")) {
       target.searchParams.set("key", expected);
     }
+
+    // Follow Google's script redirect hop.
     const response = await fetch(target.toString(), {
       redirect: "follow",
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(120_000),
+      headers: { Accept: "application/json,text/plain,*/*" },
     });
     const text = await response.text();
-    let json: { ok?: boolean; xlsx?: string; message?: string };
+    let json: {
+      ok?: boolean;
+      xlsx?: string;
+      sheets?: { name: string; values: string[][] }[];
+      message?: string;
+    };
     try {
-      json = JSON.parse(text) as { ok?: boolean; xlsx?: string; message?: string };
+      json = JSON.parse(text) as typeof json;
     } catch {
       return {
         ok: false,
         message:
-          "Apps Script did not return JSON. Redeploy the web app (Execute as: Me, Who has access: Anyone) and paste the /exec URL.",
+          "Apps Script did not return JSON. Open the /exec?key=… URL in a browser — you should see JSON. Then Deploy → Manage deployments → New version.",
       };
     }
-    if (!json.ok || !json.xlsx) {
+    if (!json.ok) {
       return { ok: false, message: json.message || "Apps Script bridge rejected the request (check the key)." };
     }
-    return { ok: true, bytes: Buffer.from(json.xlsx, "base64") };
-  } catch {
-    return { ok: false, message: "Could not reach the Apps Script bridge URL." };
+    if (json.xlsx) {
+      return { ok: true, bytes: Buffer.from(json.xlsx, "base64") };
+    }
+    if (json.sheets?.length) {
+      const bytes = await workbookFromSheetGrids(json.sheets);
+      return { ok: true, bytes };
+    }
+    return { ok: false, message: "Apps Script returned no sheet data. Redeploy the latest bridge script." };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bridge failed";
+    return { ok: false, message: `Could not reach Apps Script bridge: ${message}` };
   }
+}
+
+async function workbookFromSheetGrids(sheets: { name: string; values: string[][] }[]) {
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  for (const sheet of sheets) {
+    const name = (sheet.name || "Sheet").slice(0, 31);
+    const worksheet = workbook.addWorksheet(name);
+    for (const row of sheet.values || []) {
+      worksheet.addRow(row);
+    }
+  }
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
 }
 
 async function downloadWithServiceAccount(

@@ -1,44 +1,53 @@
 /**
- * Paste into: Google Sheet → Extensions → Apps Script
- * Then Deploy → New deployment → Web app
- *   Execute as: Me
- *   Who has access: Anyone
+ * PERMANENT live sync (free, no Google Cloud).
  *
- * Copy the Web app URL into Import on the lab site, with ?key=YOUR_SECRET appended.
- * Example: https://script.google.com/macros/s/XXXX/exec?key=YOUR_SECRET
+ * 1) Tracker Google Sheet → Extensions → Apps Script
+ * 2) Replace all code with this file
+ * 3) Set BRIDGE_SECRET to your Netlify CRON_SECRET
+ * 4) Deploy → New deployment → Web app
+ *      Execute as: Me
+ *      Who has access: Anyone
+ * 5) Authorize when asked
+ * 6) Copy the /exec URL into Import as:
+ *      https://script.google.com/macros/s/XXXX/exec?key=YOUR_SECRET
  *
- * Set the same YOUR_SECRET in Netlify as TRACKER_BRIDGE_SECRET (or reuse CRON_SECRET).
+ * After any code change: Deploy → Manage deployments → Edit → New version → Deploy
  */
-var BRIDGE_SECRET = "YOUR_SECRET"; // change this
+var BRIDGE_SECRET = "K5vxmVhWwLJOfy7iAdTazN8Q6cpn3jCE1GZeRsI9XHtPMo4k";
 
 function doGet(e) {
-  var key = e && e.parameter ? e.parameter.key : "";
-  if (key !== BRIDGE_SECRET) {
-    return ContentService.createTextOutput(
-      JSON.stringify({ ok: false, message: "Invalid key" }),
-    ).setMimeType(ContentService.MimeType.JSON);
+  try {
+    var key = e && e.parameter ? String(e.parameter.key || "") : "";
+    if (key !== BRIDGE_SECRET) {
+      return jsonOut({ ok: false, message: "Invalid key" });
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var out = [];
+    var keep = /january|february|march|april|may|june|july|august|september|october|november|december|pickup/i;
+
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var name = sheet.getName();
+      if (!keep.test(name)) continue;
+      var range = sheet.getDataRange();
+      var values = range.getDisplayValues();
+      out.push({ name: name, values: values });
+    }
+
+    if (!out.length) {
+      return jsonOut({ ok: false, message: "No month/pickup tabs found in this spreadsheet." });
+    }
+
+    return jsonOut({ ok: true, sheets: out, title: ss.getName() });
+  } catch (err) {
+    return jsonOut({ ok: false, message: String(err) });
   }
+}
 
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var id = ss.getId();
-  var exportUrl =
-    "https://docs.google.com/spreadsheets/d/" + id + "/export?format=xlsx";
-  var response = UrlFetchApp.fetch(exportUrl, {
-    muteHttpExceptions: true,
-    followRedirects: true,
-  });
-
-  if (response.getResponseCode() >= 400) {
-    return ContentService.createTextOutput(
-      JSON.stringify({
-        ok: false,
-        message: "Export failed: " + response.getResponseCode(),
-      }),
-    ).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  var b64 = Utilities.base64Encode(response.getBlob().getBytes());
-  return ContentService.createTextOutput(
-    JSON.stringify({ ok: true, xlsx: b64, spreadsheetId: id }),
-  ).setMimeType(ContentService.MimeType.JSON);
+function jsonOut(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
+    ContentService.MimeType.JSON,
+  );
 }
