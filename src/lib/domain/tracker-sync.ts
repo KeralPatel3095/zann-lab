@@ -26,17 +26,23 @@ export async function saveTrackerSheetUrl(userId: string, url: string): Promise<
   if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
   const trimmed = url.trim();
   const { isAppsScriptBridgeUrl } = await import("../integrations/google-sheet");
-  if (trimmed && spreadsheetIdFromInput(trimmed) && !isAppsScriptBridgeUrl(trimmed)) {
+  const hasServiceAccount = Boolean(
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim(),
+  );
+  if (trimmed && isAppsScriptBridgeUrl(trimmed)) {
+    // ok — Apps Script bridge
+  } else if (trimmed && spreadsheetIdFromInput(trimmed)) {
+    if (!hasServiceAccount) {
+      return {
+        ok: false,
+        message:
+          "Normal Google Sheet links need a service account. Add GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY in Netlify, share the sheet with that email as Viewer, redeploy, then Save and sync.",
+      };
+    }
+  } else if (trimmed) {
     return {
       ok: false,
-      message:
-        "Do not paste the normal Google Sheet link. Paste the Apps Script web app URL only (script.google.com/.../exec?key=...).",
-    };
-  }
-  if (trimmed && !isAppsScriptBridgeUrl(trimmed)) {
-    return {
-      ok: false,
-      message: "Paste the Apps Script web app URL (.../exec?key=...).",
+      message: "Paste the Google Sheet link (with service account configured) or an Apps Script /exec?key=… URL.",
     };
   }
   await putSetting("tracker_sheet_url", trimmed);

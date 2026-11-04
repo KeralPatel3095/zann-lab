@@ -9,68 +9,58 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
   const notice = (await searchParams).notice;
   const status = await trackerStatus(actor.id);
   const feedback = notice || status.message;
-  const urlLooksWrong = /docs\.google\.com\/spreadsheets/i.test(status.url);
+  const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || "";
+  const hasServiceAccount = Boolean(serviceEmail && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim());
   return (
     <div className="grid gap-4">
       <header>
         <p className="lab-kicker">Case tracker</p>
         <h1 className="mt-1 text-3xl">Live Google Sheet</h1>
-        <p className="mt-1 text-sm">Today stays empty until sync succeeds. Use the checklist below.</p>
+        <p className="mt-1 text-sm">
+          Permanent sync uses a Google service account. Paste the normal sheet link after Netlify has the two Google env
+          vars.
+        </p>
       </header>
 
       {feedback ? <p className="lab-card border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">{feedback}</p> : null}
-      {urlLooksWrong ? (
-        <p className="lab-card border border-red-300 bg-red-50 p-4 text-sm text-red-900">
-          The saved link is a normal Google Sheet URL. That will never sync. Replace it with your Apps Script{" "}
-          <strong>/exec?key=…</strong> URL.
-        </p>
-      ) : null}
 
       <section className="lab-card grid gap-2 p-5 text-sm">
-        <h2 className="text-lg">Working path (required)</h2>
-        <ol className="list-decimal space-y-1.5 pl-5">
-          <li>
-            In Apps Script, paste <code>docs/google-apps-script-bridge.js</code>, then click <strong>Run → testBridge</strong> and
-            authorize. Execution log must show <code>{`{"ok":true`}</code>.
-          </li>
-          <li>
-            <strong>Deploy → Manage deployments → Edit → New version</strong>. Who has access: <strong>Anyone</strong>. Deploy.
-          </li>
-          <li>
-            Open the deployment URL in a private/incognito window. It must show JSON like <code>{`{"ok":true,"sheets":...}`}</code> —
-            not a Google login page.
-          </li>
-          <li>
-            Paste <strong>only that</strong> URL below (starts with <code>script.google.com</code>), then Save and sync.
-          </li>
-        </ol>
+        <h2 className="text-lg">Service account status</h2>
+        {hasServiceAccount ? (
+          <p className="text-teal-900">
+            Configured. Share the sheet with <strong>{serviceEmail}</strong> as Viewer, paste the sheet link below, then
+            Save and sync.
+          </p>
+        ) : (
+          <p className="text-amber-900">
+            Not configured yet. In Netlify add <code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code> and{" "}
+            <code>GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY</code>, share the sheet with that email as Viewer, redeploy, then
+            return here.
+          </p>
+        )}
       </section>
 
       <form action={syncTrackerAction} className="lab-card grid gap-3 p-5">
-        <h2 className="text-lg">Apps Script /exec URL only</h2>
-        <p className="text-sm text-red-800">Do not paste docs.google.com links here.</p>
+        <h2 className="text-lg">Google Sheet link</h2>
         <label>
-          Web app URL
+          Sheet URL
           <input
             name="sheet_url"
-            defaultValue={urlLooksWrong ? "" : status.url}
-            placeholder="https://script.google.com/macros/s/XXXX/exec?key=K5vxmVhWwLJOfy7iAdTazN8Q6cpn3jCE1GZeRsI9XHtPMo4k"
+            defaultValue={status.url}
+            placeholder="https://docs.google.com/spreadsheets/d/..../edit"
           />
         </label>
         <button className="w-fit rounded-md bg-teal-800 px-3 py-2 text-sm text-white">Save and sync</button>
       </form>
 
       <form action={uploadTrackerAction} className="lab-card grid gap-3 p-5">
-        <h2 className="text-lg">Get cases on screen right now</h2>
-        <p className="text-sm">
-          Google Sheet → <strong>File → Download → Excel (.xlsx)</strong> → choose the file → Upload. This fills Today
-          immediately while you finish the live bridge.
-        </p>
+        <h2 className="text-lg">Backup Excel upload</h2>
+        <p className="text-sm">Use only if service account sync is not ready yet.</p>
         <label>
           Tracker Excel file
           <input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
         </label>
-        <button className="w-fit rounded-md border border-teal-800 px-3 py-2 text-sm text-teal-900">Upload Excel now</button>
+        <button className="w-fit rounded-md border border-teal-800 px-3 py-2 text-sm text-teal-900">Upload once</button>
       </form>
     </div>
   );
