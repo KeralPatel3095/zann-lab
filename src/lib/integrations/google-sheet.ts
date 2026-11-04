@@ -68,6 +68,13 @@ async function downloadViaAppsScriptBridge(
       headers: { Accept: "application/json,text/plain,*/*" },
     });
     const text = await response.text();
+    if (/<!DOCTYPE html>|<html/i.test(text)) {
+      return {
+        ok: false,
+        message:
+          "Google returned a login/HTML page instead of data. In Apps Script: Deploy → Manage deployments → Edit → Who has access = Anyone, then New version → Deploy. Open the /exec?key=… URL in a private browser window until you see {\"ok\":true}.",
+      };
+    }
     let json: {
       ok?: boolean;
       xlsx?: string;
@@ -80,7 +87,7 @@ async function downloadViaAppsScriptBridge(
       return {
         ok: false,
         message:
-          "Apps Script did not return JSON. Open the /exec?key=… URL in a browser — you should see JSON. Then Deploy → Manage deployments → New version.",
+          "Apps Script did not return JSON. You must paste the script.google.com/.../exec?key=… URL on Import (not the docs.google.com sheet link).",
       };
     }
     if (!json.ok) {

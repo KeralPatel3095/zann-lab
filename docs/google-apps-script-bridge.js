@@ -14,15 +14,24 @@
  */
 var BRIDGE_SECRET = "K5vxmVhWwLJOfy7iAdTazN8Q6cpn3jCE1GZeRsI9XHtPMo4k";
 
-// Your tracker Google Sheet ID (copy from browser URL: /spreadsheets/d/THIS_PART/edit)
-// Current lab sheet:
-var SHEET_ID = "1A5K8GUtiujYmkwKKHkzXdalhcpnRySECIq18bCKpczQ";
+// Paste the ID from your browser address bar: docs.google.com/spreadsheets/d/PASTE_THIS/edit
+var SHEET_ID = "1A5K8GUtIujYmkwKKHkzXdaIhcpnRySECiq18bCKpczQ";
+
+/** Run this inside Apps Script (Run ▶) to test before deploying. Check Execution log. */
+function testBridge() {
+  var out = doGet({ parameter: { key: BRIDGE_SECRET } });
+  Logger.log(out.getContent());
+}
 
 function doGet(e) {
   try {
     var key = e && e.parameter ? String(e.parameter.key || "") : "";
     if (key !== BRIDGE_SECRET) {
       return jsonOut({ ok: false, message: "Invalid key" });
+    }
+
+    if (!SHEET_ID || SHEET_ID.indexOf("PASTE") >= 0) {
+      return jsonOut({ ok: false, message: "Set SHEET_ID in the script to your spreadsheet id." });
     }
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
