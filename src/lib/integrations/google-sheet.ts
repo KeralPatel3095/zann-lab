@@ -1,10 +1,31 @@
 import { importPKCS8, SignJWT } from "jose";
 
+export function isAppsScriptBridgeUrl(value: string) {
+  return /script\.google\.com\/macros\/s\//i.test(value.trim());
+}
+
 /**
- * Download a Google Sheet as .xlsx.
- * Prefers a service account (works with Workspace sheets that block anonymous export).
- * Falls back to the public /export URL when no service account is configured.
+ * Download tracker bytes from:
+ * 1) Apps Script bridge URL (free, no Google Cloud Console)
+ * 2) Service account Drive export
+ * 3) Anonymous Google /export URL
  */
+export async function downloadTrackerSource(
+  sourceUrl: string,
+): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
+  const trimmed = sourceUrl.trim();
+  if (isAppsScriptBridgeUrl(trimmed)) {
+    return downloadViaAppsScriptBridge(trimmed);
+  }
+
+  const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  const spreadsheetId = idMatch?.[1] || (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed) ? trimmed : null);
+  if (!spreadsheetId) {
+    return { ok: false, message: "Paste the Google Sheet link or the Apps Script web app URL." };
+  }
+  return downloadGoogleSheetXlsx(spreadsheetId);
+}
+
 export async function downloadGoogleSheetXlsx(
   spreadsheetId: string,
 ): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
@@ -21,12 +42,45 @@ export async function downloadGoogleSheetXlsx(
       return {
         ok: false,
         message:
-          "Cannot read that Google Sheet anonymously. Share it with the Google service account email as Viewer (see Import page), or set General access to Anyone with the link → Viewer.",
+          "Direct Google Sheet export is blocked. Use the free Apps Script bridge on the Import page (no Google Cloud billing), or a service account.",
       };
     }
     return { ok: true, bytes: Buffer.from(await response.arrayBuffer()) };
   } catch {
     return { ok: false, message: "The case tracker could not be reached." };
+  }
+}
+
+async function downloadViaAppsScriptBridge(
+  url: string,
+): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
+  try {
+    const target = new URL(url);
+    const expected = process.env.TRACKER_BRIDGE_SECRET?.trim() || process.env.CRON_SECRET?.trim() || "";
+    if (expected && !target.searchParams.get("key")) {
+      target.searchParams.set("key", expected);
+    }
+    const response = await fetch(target.toString(), {
+      redirect: "follow",
+      signal: AbortSignal.timeout(90_000),
+    });
+    const text = await response.text();
+    let json: { ok?: boolean; xlsx?: string; message?: string };
+    try {
+      json = JSON.parse(text) as { ok?: boolean; xlsx?: string; message?: string };
+    } catch {
+      return {
+        ok: false,
+        message:
+          "Apps Script did not return JSON. Redeploy the web app (Execute as: Me, Who has access: Anyone) and paste the /exec URL.",
+      };
+    }
+    if (!json.ok || !json.xlsx) {
+      return { ok: false, message: json.message || "Apps Script bridge rejected the request (check the key)." };
+    }
+    return { ok: true, bytes: Buffer.from(json.xlsx, "base64") };
+  } catch {
+    return { ok: false, message: "Could not reach the Apps Script bridge URL." };
   }
 }
 

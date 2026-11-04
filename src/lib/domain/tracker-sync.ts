@@ -25,7 +25,13 @@ export async function saveTrackerSheetUrl(userId: string, url: string): Promise<
   const actor = await runAs(userId, async (_tx, current) => current);
   if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
   const trimmed = url.trim();
-  if (trimmed && !spreadsheetIdFromInput(trimmed)) return { ok: false, message: "Paste the full Google Sheets link." };
+  const { isAppsScriptBridgeUrl } = await import("../integrations/google-sheet");
+  if (trimmed && !spreadsheetIdFromInput(trimmed) && !isAppsScriptBridgeUrl(trimmed)) {
+    return {
+      ok: false,
+      message: "Paste the Google Sheet link or the Apps Script web app URL (.../exec?key=...).",
+    };
+  }
   await putSetting("tracker_sheet_url", trimmed);
   return { ok: true };
 }
@@ -249,10 +255,8 @@ function syncMessage(counts: SyncCounts) {
 }
 
 async function downloadSpreadsheet(url: string): Promise<{ ok: true; bytes: Buffer } | { ok: false; message: string }> {
-  const id = spreadsheetIdFromInput(url);
-  if (!id) return { ok: false, message: "Paste the full Google Sheets link." };
-  const { downloadGoogleSheetXlsx } = await import("../integrations/google-sheet");
-  return downloadGoogleSheetXlsx(id);
+  const { downloadTrackerSource } = await import("../integrations/google-sheet");
+  return downloadTrackerSource(url);
 }
 
 async function readSetting(key: string) {
