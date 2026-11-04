@@ -26,10 +26,17 @@ export async function saveTrackerSheetUrl(userId: string, url: string): Promise<
   if (!hasBackendAccess(actor)) return { ok: false, message: "Not allowed" };
   const trimmed = url.trim();
   const { isAppsScriptBridgeUrl } = await import("../integrations/google-sheet");
-  if (trimmed && !spreadsheetIdFromInput(trimmed) && !isAppsScriptBridgeUrl(trimmed)) {
+  if (trimmed && spreadsheetIdFromInput(trimmed) && !isAppsScriptBridgeUrl(trimmed)) {
     return {
       ok: false,
-      message: "Paste the Google Sheet link or the Apps Script web app URL (.../exec?key=...).",
+      message:
+        "Do not paste the normal Google Sheet link. Paste the Apps Script web app URL only (script.google.com/.../exec?key=...).",
+    };
+  }
+  if (trimmed && !isAppsScriptBridgeUrl(trimmed)) {
+    return {
+      ok: false,
+      message: "Paste the Apps Script web app URL (.../exec?key=...).",
     };
   }
   await putSetting("tracker_sheet_url", trimmed);
