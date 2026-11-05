@@ -57,38 +57,71 @@ export async function applyTrackerWorkbook(
   const parsed = await parseTrackerWorkbook(bytes);
   if (!parsed.cases.length) return { ok: false, message: "That file does not contain the monthly case tracker sheets." };
   const counts: SyncCounts = { created: 0, updated: 0, unchanged: 0, invalid: 0, pickups: 0 };
-  await runAs(userId, async (tx, actor) => {
+  const actorId = await runAs(userId, async (tx, actor) => {
     if (!options?.automated && !hasBackendAccess(actor)) throw new Error("Not allowed");
+    return actor.id;
+  });
+  const byNumber = await runAs(userId, async (tx) => {
     const existing = await tx<{ id: string; case_number: string; tracker_fingerprint: string; tracker_status: string; tracker_due: string }[]>`
       select id, case_number, tracker_fingerprint, tracker_status, tracker_due from cases
     `;
-    const byNumber = new Map(existing.map((row) => [row.case_number.toLowerCase(), row]));
-    const clinics = await tx<{ id: string; dentist_code: string }[]>`select id, dentist_code from clinic_accounts`;
-    const clinicByCode = new Map(clinics.map((row) => [row.dentist_code.toLowerCase(), row.id]));
-    for (const officeName of new Set(parsed.cases.map((row) => row.officeName.trim()).filter(Boolean))) {
-      const code = officeCode(officeName);
-      if (clinicByCode.has(code)) continue;
-      const [created] = await tx<{ id: string }[]>`
-        insert into clinic_accounts (dentist_code, dentist_name, clinic_name)
-        values (${code}, ${officeName}, ${officeName})
-        returning id
-      `;
-      clinicByCode.set(code, created.id);
-    }
-    for (const row of parsed.cases) {
-      const outcome = await writeCase(tx, actor.id, row, clinicByCode, byNumber.get(row.caseNumber.toLowerCase()) ?? null);
-      counts[outcome] += 1;
-    }
-    for (const pickup of parsed.pickups) {
-      const inserted = await tx<{ id: string }[]>`
-        insert into tracker_pickups (sheet_name, pickup_on, detail, fingerprint)
-        values (${pickup.sheetName}, ${pickup.pickupOn}, ${pickup.detail}, ${pickup.fingerprint})
-        on conflict (fingerprint) do nothing
-        returning id
-      `;
-      counts.pickups += inserted.length;
-    }
+    return new Map(existing.map((row) => [row.case_number.toLowerCase(), row]));
   });
+  const clinicByCode = await runAs(userId, async (tx) => {
+    const clinics = await tx<{ id: string; dentist_code: string }[]>`select id, dentist_code from clinic_accounts`;
+    return new Map(clinics.map((row) => [row.dentist_code.toLowerCase(), row.id]));
+  });
+  const offices = [...new Set(parsed.cases.map((row) => row.officeName.trim()).filter(Boolean))];
+  for (let index = 0; index < offices.length; index += 15) {
+    const slice = offices.slice(index, index + 15);
+    await runAs(userId, async (tx) => {
+      for (const officeName of slice) {
+        const code = officeCode(officeName);
+        if (clinicByCode.has(code)) continue;
+        const [created] = await tx<{ id: string }[]>`
+          insert into clinic_accounts (dentist_code, dentist_name, clinic_name)
+          values (${code}, ${officeName}, ${officeName})
+          returning id
+        `;
+        clinicByCode.set(code, created.id);
+      }
+    });
+  }
+  const prepared = { actorId, byNumber, clinicByCode };
+
+  const batchSize = 8;
+  for (let index = 0; index < parsed.cases.length; index += batchSize) {
+    if (index % 200 === 0) console.log(`tracker cases ${index}/${parsed.cases.length}`);
+    const slice = parsed.cases.slice(index, index + batchSize);
+    await runAs(userId, async (tx) => {
+      await tx.unsafe("set local statement_timeout = '60s'");
+      for (const row of slice) {
+        const outcome = await writeCase(
+          tx,
+          prepared.actorId,
+          row,
+          prepared.clinicByCode,
+          prepared.byNumber.get(row.caseNumber.toLowerCase()) ?? null,
+        );
+        counts[outcome] += 1;
+      }
+    });
+  }
+  for (let index = 0; index < parsed.pickups.length; index += batchSize) {
+    const slice = parsed.pickups.slice(index, index + batchSize);
+    await runAs(userId, async (tx) => {
+      await tx.unsafe("set local statement_timeout = '60s'");
+      for (const pickup of slice) {
+        const inserted = await tx<{ id: string }[]>`
+          insert into tracker_pickups (sheet_name, pickup_on, detail, fingerprint)
+          values (${pickup.sheetName}, ${pickup.pickupOn}, ${pickup.detail}, ${pickup.fingerprint})
+          on conflict (fingerprint) do nothing
+          returning id
+        `;
+        counts.pickups += inserted.length;
+      }
+    });
+  }
   return { ok: true, message: syncMessage(counts), ...counts };
 }
 
