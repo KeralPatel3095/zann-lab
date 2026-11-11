@@ -545,12 +545,6 @@ a.lab-card:hover,
   font-weight: 600;
 }
 
-.lab-login-brand p:last-child {
-  max-width: 300px;
-  margin-top: 12px;
-  line-height: 1.55;
-}
-
 .lab-login-card {
   padding: 48px 40px;
 }

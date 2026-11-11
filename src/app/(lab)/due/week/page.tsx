@@ -51,10 +51,6 @@ export default async function DueWeekPage() {
         <p className="text-sm"><Link href="/">Today</Link></p>
         <p className="lab-kicker mt-3">Start early</p>
         <h1 className="mt-1 text-3xl">Week ahead</h1>
-        <p className="mt-1 text-sm">
-          {rows.length} in-lab cases are listed on a Monday to Friday only, from {start.toFormat("cccc d LLLL")} through {end.toFormat("cccc d LLLL")}.
-          A case due 3 Nov is listed on 2 Nov. A case due by 10am, or earlier, is listed one more weekday before that. Saturday and Sunday are not listed. The due date still shows what the sheet says.
-        </p>
       </header>
       {[...groups.entries()].map(([day, cases]) => {
         const heading = day === "none" ? "No due date" : DateTime.fromISO(day, { zone: LAB_ZONE }).toFormat("cccc d LLLL");

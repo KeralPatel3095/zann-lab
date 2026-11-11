@@ -25,7 +25,6 @@ export function LoginForm({ seedPassword }: { seedPassword: string }) {
           <p className="lab-logo">ZANN</p>
           <p className="lab-kicker">Dental laboratory</p>
           <h1>Production desk</h1>
-          <p>Cases, due dates, and bench work in one place — from the tracker sheet through finish and pack.</p>
         </div>
         <div className="lab-login-card">
           <h2>Sign in</h2>
