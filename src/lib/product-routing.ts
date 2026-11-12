@@ -7,24 +7,20 @@ export const PRODUCT_OWNERS = {
   ned: "ned.bogdanovic@zann-lab.test",
 } as const;
 
-/** Implant work is shared. Both benches see it; it is not assigned to only one of them. */
-const IMPLANT_OWNERS = [PRODUCT_OWNERS.zoca, PRODUCT_OWNERS.ned] as const;
-
 /**
  * Nightguard / sportsguard / bleaching / ortho → Negar
  * Crown / bridge → Zoca
- * Denture / gold crown → Ned
- * Implant → Zoca and Ned
+ * Denture / gold crown / implant → Ned
  */
 export function ownerEmailsForCaseType(caseType: string | null | undefined): string[] {
   const text = (caseType ?? "").trim().toLowerCase();
   if (!text) return [];
-  if (/\bimplants?\b/.test(text)) return [...IMPLANT_OWNERS];
+  if (/\bimplants?\b/.test(text)) return [PRODUCT_OWNERS.ned];
   const owner = exclusiveOwner(text);
   return owner ? [owner] : [];
 }
 
-/** Single bench owner. Shared products such as implants return null. */
+/** The one technician who owns this product, when the type is routed. */
 export function ownerEmailForCaseType(caseType: string | null | undefined): string | null {
   const owners = ownerEmailsForCaseType(caseType);
   return owners.length === 1 ? owners[0] : null;
@@ -51,7 +47,7 @@ function exclusiveOwner(text: string): string | null {
 
 export type BenchTone = "negar" | "zoca" | "ned" | "shared" | "other";
 
-/** Row color for the bench that owns this product. Implants are shared. */
+/** Row color for the bench that owns this product. */
 export function benchTone(caseType: string | null | undefined): BenchTone {
   const owners = ownerEmailsForCaseType(caseType);
   if (owners.length > 1) return "shared";

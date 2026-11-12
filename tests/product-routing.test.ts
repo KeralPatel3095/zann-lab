@@ -22,29 +22,30 @@ describe("product routing", () => {
     expect(ownerEmailForCaseType("Repair/Reline")).toBe(PRODUCT_OWNERS.ned);
   });
 
-  it("shows implant cases to both Zoca and Ned", () => {
+  it("sends implant cases to Ned", () => {
     const negar = { email: PRODUCT_OWNERS.negar, role: "technician" as const };
     const zoca = { email: PRODUCT_OWNERS.zoca, role: "technician" as const };
     const ned = { email: PRODUCT_OWNERS.ned, role: "technician" as const };
-    expect(ownerEmailForCaseType("Implant")).toBeNull();
-    expect(canViewCaseType(zoca, "Implant")).toBe(true);
+    expect(ownerEmailForCaseType("Implant")).toBe(PRODUCT_OWNERS.ned);
+    expect(ownerEmailForCaseType("Implant Crown")).toBe(PRODUCT_OWNERS.ned);
     expect(canViewCaseType(ned, "Implant")).toBe(true);
-    expect(canViewCaseType(negar, "Implant")).toBe(false);
-    expect(canViewCaseType(zoca, "Implant Crown")).toBe(true);
     expect(canViewCaseType(ned, "Implant Crown")).toBe(true);
+    expect(canViewCaseType(zoca, "Implant")).toBe(false);
+    expect(canViewCaseType(zoca, "Implant Crown")).toBe(false);
+    expect(canViewCaseType(negar, "Implant")).toBe(false);
     expect(canViewCaseType(zoca, "Crown")).toBe(true);
     expect(canViewCaseType(ned, "Crown")).toBe(false);
     expect(canViewCaseType(ned, "Denture")).toBe(true);
     expect(canViewCaseType(zoca, "Denture")).toBe(false);
   });
 
-  it("colors each bench, and shares implants", () => {
+  it("colors each bench", () => {
     expect(benchTone("Nightguard")).toBe("negar");
     expect(benchTone("Crown")).toBe("zoca");
     expect(benchTone("Denture")).toBe("ned");
-    expect(benchTone("Implant")).toBe("shared");
+    expect(benchTone("Implant")).toBe("ned");
     expect(benchTone("Models")).toBe("other");
-    expect(benchRowClass("Implant")).toBe("bench-shared");
+    expect(benchRowClass("Implant")).toBe("bench-ned");
   });
 
   it("hides other technicians' products on the board", () => {

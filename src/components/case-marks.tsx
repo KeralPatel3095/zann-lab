@@ -63,7 +63,6 @@ const benchKey = [
   ["negar", "Negar"],
   ["zoca", "Zoca"],
   ["ned", "Ned"],
-  ["shared", "Implant"],
   ["other", "Other"],
 ] as const;
 
