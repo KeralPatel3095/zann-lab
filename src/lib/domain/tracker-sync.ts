@@ -274,7 +274,7 @@ async function writeCase(
 
 function mapStatus(status: string) {
   const value = status.trim().toLowerCase();
-  if (value === "delivered" || value === "invoice") {
+  if (value === "delivered" || value === "invoice" || /^picked[\s-]*up$/.test(value)) {
     return { overall: "delivered", dispatch: "delivered", historical: true, terminal: true, holdReason: "" };
   }
   if (value === "packing") {

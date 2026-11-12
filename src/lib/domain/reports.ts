@@ -46,6 +46,7 @@ export async function todayBoard(userId: string) {
       where overall_status = 'in_production'
         and not historical
         and not app.case_is_bench_finished(id)
+        and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
         and requested_delivery_at is not null
         and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
       order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
@@ -82,6 +83,7 @@ export async function todayBoard(userId: string) {
       from cases
       where not historical
         and not app.case_is_bench_finished(id)
+        and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
         and overall_status in ('in_production', 'ready_for_dispatch', 'on_hold')
       group by case_type, overall_status
     `;
@@ -118,6 +120,7 @@ export async function dashboard(userId: string) {
       where overall_status = 'in_production'
         and not historical
         and not app.case_is_bench_finished(id)
+        and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
         and requested_delivery_at is not null
         and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
       order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
@@ -280,6 +283,7 @@ async function loadStillOpen(
     where c.overall_status in ('in_production', 'ready_for_dispatch', 'on_hold')
       and not c.historical
       and not app.case_is_bench_finished(c.id)
+      and lower(btrim(c.tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
     order by c.requested_delivery_at nulls last, c.case_number
   `;
   return rows
@@ -321,6 +325,7 @@ async function loadFinishToday(tx: Tx, actor: { email: string; role: import("../
     where c.overall_status = 'in_production'
       and not c.historical
       and not app.case_is_bench_finished(c.id)
+      and lower(btrim(c.tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
       and c.requested_delivery_at is not null
       and (c.requested_delivery_at at time zone ${zone})::date between ${today}::date and ${horizon}::date
     order by (c.requested_delivery_at at time zone ${zone})::date nulls last, c.case_number
@@ -363,6 +368,7 @@ export async function listCasesDueBetween(userId: string, start: string, end: st
       where c.overall_status = 'in_production'
         and not c.historical
         and not app.case_is_bench_finished(c.id)
+        and lower(btrim(c.tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
         and c.requested_delivery_at is not null
         and (c.requested_delivery_at at time zone ${LAB_ZONE})::date between ${start}::date and ${end}::date
       order by (c.requested_delivery_at at time zone ${LAB_ZONE})::date, c.case_number
@@ -378,16 +384,17 @@ export async function managementSummary(userId: string) {
     if (!hasManagementAccess(actor)) return null;
     const [totals] = await tx<{ in_lab: number; ready_to_pack: number; finished: number; late: number }[]>`
       select
-        count(*) filter (where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id))::int as in_lab,
-        count(*) filter (where overall_status = 'ready_for_dispatch')::int as ready_to_pack,
-        count(*) filter (where overall_status in ('delivered', 'dispatched') or tracker_status ilike 'scheduled')::int as finished,
-        count(*) filter (where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id) and deadline_indicator = 'overdue')::int as late
+        count(*) filter (where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id) and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up'))::int as in_lab,
+        count(*) filter (where overall_status = 'ready_for_dispatch' and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up'))::int as ready_to_pack,
+        count(*) filter (where overall_status in ('delivered', 'dispatched') or lower(btrim(tracker_status)) in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up'))::int as finished,
+        count(*) filter (where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id) and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up') and deadline_indicator = 'overdue')::int as late
       from cases
     `;
     const products = await tx<{ case_type: string; total: number }[]>`
       select case_type, count(*)::int as total
       from cases
       where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id)
+        and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
       group by case_type
       order by count(*) desc, case_type
     `;
@@ -400,6 +407,7 @@ export async function managementSummary(userId: string) {
       where overall_status = 'in_production'
         and not historical
         and not app.case_is_bench_finished(id)
+        and lower(btrim(tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
         and requested_delivery_at is not null
         and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
     `;

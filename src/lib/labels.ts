@@ -1,6 +1,7 @@
 export function sheetStatus(trackerStatus: string, overallStatus: string) {
   const value = trackerStatus.trim().toLowerCase();
   if (value === "scheduled") return { text: "Finished", tone: "delivered" };
+  if (value === "delivered" || /^picked[\s-]*up$/.test(value)) return { text: "Delivered", tone: "delivered" };
   if (value === "packing") return { text: "Ready to pack", tone: "ready_for_dispatch" };
   if (value === "in lab") return { text: "In lab", tone: "in_production" };
   if (value.includes("streamline")) return { text: "Back from Streamline", tone: "in_production" };
@@ -67,6 +68,13 @@ export const roleLabels: Record<string, string> = {
   department_lead: "Department Lead",
   production_manager: "Production Manager",
 };
+
+export const closedTrackerStatusPattern = String.raw`^\s*(delivered|invoice|scheduled|picked[\s-]*up)\s*$`;
+
+/** Sheet statuses that mean the case has already left the lab. */
+export function trackerStatusIsClosed(status: string) {
+  return new RegExp(closedTrackerStatusPattern, "i").test(status ?? "");
+}
 
 export function label(map: Record<string, string>, value: string) {
   return map[value] ?? value;
