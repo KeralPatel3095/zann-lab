@@ -6,6 +6,7 @@ import { listCases } from "@/lib/domain/cases";
 import { formatStamp } from "@/lib/format";
 import { caseStatusLabels, indicatorLabels } from "@/lib/labels";
 import { canViewClinicIdentity } from "@/lib/privacy";
+import { benchRowClass } from "@/lib/product-routing";
 
 export default async function CasesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; indicator?: string; page?: string }> }) {
   const actor = await requireActorPage();
@@ -49,7 +50,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
           </thead>
           <tbody>
             {result.rows.map((row) => (
-              <tr key={row.id}>
+              <tr key={row.id} className={benchRowClass(row.caseType)}>
                 <td data-label="Case"><Link className="text-teal-800" href={`/cases/${row.id}`}>{row.caseNumber}</Link></td>
                 <td data-label={canViewClinicIdentity(actor) ? "Office" : "Dentist"}>{row.clinic?.clinicName || row.dentistCode}</td>
                 <td data-label="Patient">{row.patientName}</td>

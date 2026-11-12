@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { canMarkBenchFinish, canSeeFinishedBoard, caseIsNegarProduct } from "@/lib/bench-board";
-import { PanMark, ProductMark } from "@/components/case-marks";
+import { PanMark, ProductMark, BenchLegend } from "@/components/case-marks";
 import { FinishCaseButton } from "@/components/finish-case-button";
+import { FinishNotice } from "@/components/finish-notice";
 import { FinishedCaseTable } from "@/components/finished-case-table";
 import { OpenCaseTable } from "@/components/open-case-table";
 import { StatusPill } from "@/components/status-pill";
@@ -11,6 +12,7 @@ import { listFinishedBoard, listMyFinishesToday } from "@/lib/domain/bench-finis
 import { todayBoard } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
+import { benchRowClass } from "@/lib/product-routing";
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
@@ -22,13 +24,20 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const myFinished = finishOwn ? await listMyFinishesToday(actor.id) : [];
   const today = DateTime.now().setZone(LAB_ZONE);
   const openTasks = data.myTasks.reduce((sum, row) => sum + row.total, 0);
+  const popup = query.notice?.startsWith("Case finished")
+    ? { title: "Case finished", message: "Added in You finished today.", anchor: "finished-today" }
+    : query.notice?.startsWith("Case returned")
+      ? { title: "Case returned", message: "It is back on Finish today.", anchor: "finish-today" }
+      : null;
   return (
     <div className="grid gap-5">
-      {query.notice ? <p className="rounded-md bg-amber-50 p-3 text-sm">{query.notice}</p> : null}
+      {popup ? <FinishNotice title={popup.title} message={popup.message} anchor={popup.anchor} /> : null}
+      {query.notice && !popup ? <p className="rounded-md bg-amber-50 p-3 text-sm">{query.notice}</p> : null}
       <header>
         <p className="lab-kicker">Lab</p>
         <h1 className="mt-1 text-3xl">Today</h1>
         <p className="mt-1 text-sm">{today.toFormat("cccc, d LLLL yyyy")} · Toronto</p>
+        <BenchLegend />
         <p className="mt-3 text-sm">
           <span className="lab-count text-3xl font-semibold text-[#545658]">{data.inLab}</span>
           {" "}{data.inLab === 1 ? "case" : "cases"} in the lab
@@ -36,7 +45,19 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           {data.onHold > 0 ? ` · ${data.onHold} on hold` : ""}
         </p>
       </header>
-      <section className="lab-card p-5">
+      {finishOwn ? (
+        <section id="finished-today" className="lab-card lab-card-done lab-sheet">
+          <div className="px-4 pt-4">
+            <h2 className="text-xl">You finished today</h2>
+            <p className="mt-1 text-sm">
+              {myFinished.length} {myFinished.length === 1 ? "case is" : "cases are"} on Ana, Keral, and Parneet’s board.
+              Delete puts a case back on Finish today if it was marked by mistake.
+            </p>
+          </div>
+          <FinishedCaseTable rows={myFinished} showOffice={false} allowUndo />
+        </section>
+      ) : null}
+      <section id="finish-today" className="lab-card lab-card-open p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl">Finish today</h2>
@@ -64,7 +85,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <tbody>
               {data.finishToday.map((row) => {
                 return (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={benchRowClass(row.case_type)}>
                     <td data-label="Case"><Link className="text-teal-800" href={`/cases/${row.id}`}>{row.case_number}</Link></td>
                     {showOffice ? <td data-label="Office">{row.clinic_name || "—"}</td> : null}
                     <td data-label="Patient">{row.patient_name}</td>
@@ -98,7 +119,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         ) : <p className="px-4 py-4 text-sm">All open cases are already on today’s list or in Week ahead.</p>}
       </section>
       {finishedBoard ? (
-        <section className="lab-card lab-sheet">
+        <section className="lab-card lab-card-done lab-sheet">
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
             <div>
               <h2 className="text-xl">Finished by Negar</h2>
@@ -110,17 +131,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <Link href="/production" className="lab-btn">Daily production</Link>
           </div>
           <FinishedCaseTable rows={finishedBoard} showOffice={showOffice} />
-        </section>
-      ) : null}
-      {finishOwn ? (
-        <section className="lab-card lab-sheet">
-          <div className="px-4 pt-4">
-            <h2 className="text-xl">You finished today</h2>
-            <p className="mt-1 text-sm">
-              {myFinished.length} {myFinished.length === 1 ? "case is" : "cases are"} on Ana, Keral, and Parneet’s board.
-            </p>
-          </div>
-          <FinishedCaseTable rows={myFinished} showOffice={false} />
         </section>
       ) : null}
       {openTasks > 0 ? (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductMark } from "@/components/case-marks";
 import { requireActorPage } from "@/lib/auth/current";
 import { managementSummary } from "@/lib/domain/reports";
+import { benchRowClass } from "@/lib/product-routing";
 
 export default async function ManagePage() {
   const actor = await requireActorPage();
@@ -38,7 +39,7 @@ export default async function ManagePage() {
           <thead><tr><th>Product</th><th>Cases</th></tr></thead>
           <tbody>
             {data.products.map((row) => (
-              <tr key={row.case_type || "unspecified"}>
+              <tr key={row.case_type || "unspecified"} className={benchRowClass(row.case_type)}>
                 <td data-label="Product"><ProductMark name={row.case_type} /></td>
                 <td data-label="Cases">{row.total}</td>
               </tr>

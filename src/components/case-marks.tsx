@@ -59,6 +59,24 @@ export function ProductMark({ name }: { name: string }) {
   );
 }
 
+const benchKey = [
+  ["negar", "Negar"],
+  ["zoca", "Zoca"],
+  ["ned", "Ned"],
+  ["shared", "Implant"],
+  ["other", "Other"],
+] as const;
+
+export function BenchLegend() {
+  return (
+    <ul className="bench-legend" aria-label="Case colors">
+      {benchKey.map(([tone, name]) => (
+        <li key={tone}><span className={`bench-swatch bench-${tone}`} />{name}</li>
+      ))}
+    </ul>
+  );
+}
+
 export function PanMark({ value, status }: { value: string; status?: string }) {
   const text = value.trim();
   if (!text) return <span>—</span>;

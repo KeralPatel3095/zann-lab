@@ -10,6 +10,7 @@ import { listCasesDueBetween, listStillOpen } from "@/lib/domain/reports";
 import { EARLY_FINISH_DAYS, operationalDueAt } from "@/lib/office-rules";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { belongsOnFinishToday, dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "@/lib/scheduling/calendar";
+import { benchRowClass } from "@/lib/product-routing";
 
 export default async function DueWeekPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
@@ -82,7 +83,7 @@ export default async function DueWeekPage({ searchParams }: { searchParams: Prom
               </thead>
               <tbody>
                 {cases.map((row) => (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={benchRowClass(row.case_type)}>
                     <td data-label="Case"><Link href={`/cases/${row.id}`}>{row.case_number}</Link></td>
                     {showOffice ? <td data-label="Office">{row.clinic_name || "—"}</td> : null}
                     <td data-label="Patient">{row.patient_name}</td>

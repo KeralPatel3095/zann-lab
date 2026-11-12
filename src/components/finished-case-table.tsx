@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { PanMark, ProductMark } from "@/components/case-marks";
+import { UndoFinishButton } from "@/components/finish-case-button";
 import { formatStamp } from "@/lib/format";
 import type { FinishedCaseRow } from "@/lib/domain/bench-finish";
+import { benchRowClass } from "@/lib/product-routing";
 
-export function FinishedCaseTable({ rows, showOffice }: { rows: FinishedCaseRow[]; showOffice: boolean }) {
+export function FinishedCaseTable({
+  rows,
+  showOffice,
+  allowUndo = false,
+}: {
+  rows: FinishedCaseRow[];
+  showOffice: boolean;
+  allowUndo?: boolean;
+}) {
   if (rows.length === 0) return <p className="px-4 py-4 text-sm">No cases finished on this day.</p>;
   return (
     <table>
@@ -16,11 +26,12 @@ export function FinishedCaseTable({ rows, showOffice }: { rows: FinishedCaseRow[
           <th>Type</th>
           <th>Finished</th>
           <th>By</th>
+          {allowUndo ? <th></th> : null}
         </tr>
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.id}>
+          <tr key={row.id} className={benchRowClass(row.case_type)}>
             <td data-label="Case"><Link className="text-teal-800" href={`/cases/${row.id}`}>{row.case_number}</Link></td>
             {showOffice ? <td data-label="Office">{row.clinic_name || "—"}</td> : null}
             <td data-label="Patient">{row.patient_name}</td>
@@ -28,6 +39,9 @@ export function FinishedCaseTable({ rows, showOffice }: { rows: FinishedCaseRow[
             <td data-label="Type"><ProductMark name={row.case_type} /></td>
             <td data-label="Finished">{formatStamp(row.finished_at)}</td>
             <td data-label="By">{row.technician_name}</td>
+            {allowUndo ? (
+              <td data-label="Delete"><UndoFinishButton caseId={row.id} /></td>
+            ) : null}
           </tr>
         ))}
       </tbody>

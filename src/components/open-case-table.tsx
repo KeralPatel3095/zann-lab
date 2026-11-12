@@ -3,6 +3,7 @@ import { caseIsNegarProduct } from "@/lib/bench-board";
 import { FinishCaseButton } from "@/components/finish-case-button";
 import { PanMark, ProductMark } from "@/components/case-marks";
 import { StatusPill } from "@/components/status-pill";
+import { benchRowClass } from "@/lib/product-routing";
 import { dueSheetLabel } from "@/lib/scheduling/calendar";
 
 export type OpenCaseRow = {
@@ -43,7 +44,7 @@ export function OpenCaseTable({
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.id}>
+          <tr key={row.id} className={benchRowClass(row.case_type)}>
             <td data-label="Case"><Link className="text-teal-800" href={`/cases/${row.id}`}>{row.case_number}</Link></td>
             {showOffice ? <td data-label="Office">{row.clinic_name || "—"}</td> : null}
             <td data-label="Patient">{row.patient_name}</td>

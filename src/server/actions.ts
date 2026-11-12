@@ -7,7 +7,7 @@ import { attemptLocalLogin } from "@/lib/auth/login";
 import { signSession } from "@/lib/auth/session";
 import { changeOwnPassword, createStaff, saveDepartment, saveHoliday, setStaffActive, setStaffPassword, updateSetting, updateStage } from "@/lib/domain/admin";
 import { safeReturnPath, withNotice } from "@/lib/bench-board";
-import { finishBenchCase } from "@/lib/domain/bench-finish";
+import { finishBenchCase, undoBenchFinish } from "@/lib/domain/bench-finish";
 import { changeDeliveryDate, createCase, holdCase, recordDispatch, recordMissingInformation, releaseCase, resumeCase, type CaseInput } from "@/lib/domain/cases";
 import { assignTask, recordQuality, transitionTask } from "@/lib/domain/tasks";
 import { commitImport } from "@/lib/domain/transfer";
@@ -126,7 +126,14 @@ export async function finishCaseAction(formData: FormData) {
   const back = safeReturnPath(text(formData, "return_to"), `/cases/${caseId}`);
   const result = await finishBenchCase(id, caseId);
   if (!result.ok) redirect(withNotice(back, result.message));
-  redirect(withNotice(back, "Case finished. It is on Ana, Keral, and Parneet’s board."));
+  redirect(withNotice("/", "Case finished. Added in You finished today."));
+}
+
+export async function undoFinishCaseAction(formData: FormData) {
+  const id = await actorId();
+  const result = await undoBenchFinish(id, text(formData, "case_id"));
+  if (!result.ok) redirect(withNotice("/", result.message));
+  redirect(withNotice("/", "Case returned. It is back on the open list."));
 }
 
 export async function deliveryAction(formData: FormData) {

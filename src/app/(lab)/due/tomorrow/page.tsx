@@ -8,6 +8,7 @@ import { requireActorPage } from "@/lib/auth/current";
 import { listFinishToday } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
+import { benchRowClass } from "@/lib/product-routing";
 
 export default async function DueTomorrowPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
@@ -42,7 +43,7 @@ export default async function DueTomorrowPage({ searchParams }: { searchParams: 
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id}>
+              <tr key={row.id} className={benchRowClass(row.case_type)}>
                 <td data-label="Case"><Link className="text-teal-800" href={`/cases/${row.id}`}>{row.case_number}</Link></td>
                 {showOffice ? <td data-label="Office">{row.clinic_name || "—"}</td> : null}
                 <td data-label="Patient">{row.patient_name}</td>

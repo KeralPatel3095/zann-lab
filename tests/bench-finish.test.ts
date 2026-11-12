@@ -2,7 +2,7 @@ import { DateTime } from "luxon";
 import { beforeAll, describe, expect, it } from "vitest";
 import { canMarkBenchFinish, canSeeFinishedBoard, canSeeProductionReport, caseIsNegarProduct, safeReturnPath } from "../src/lib/bench-board";
 import { getSql } from "../src/lib/db/sql";
-import { finishBenchCase, listFinishedBoard, productionReport } from "../src/lib/domain/bench-finish";
+import { finishBenchCase, listFinishedBoard, listMyFinishesToday, productionReport, undoBenchFinish } from "../src/lib/domain/bench-finish";
 import { listFinishToday } from "../src/lib/domain/reports";
 import { PRODUCT_OWNERS } from "../src/lib/product-routing";
 import { LAB_ZONE } from "../src/lib/scheduling/calendar";
@@ -82,6 +82,19 @@ describe("bench finish records", () => {
 
     const open = await listFinishToday(ana);
     expect(open.map((row) => row.id)).not.toContain(nightguard);
+
+    expect((await undoBenchFinish(zoca, nightguard)).ok).toBe(false);
+    expect((await undoBenchFinish(ana, nightguard)).ok).toBe(false);
+    const undone = await undoBenchFinish(negar, nightguard);
+    expect(undone.ok).toBe(true);
+    expect((await undoBenchFinish(negar, nightguard)).ok).toBe(false);
+
+    const boardAfter = await listFinishedBoard(ana);
+    expect(boardAfter?.map((row) => row.id)).not.toContain(nightguard);
+    const mine = await listMyFinishesToday(negar);
+    expect(mine.map((row) => row.id)).not.toContain(nightguard);
+    const openAgain = await listFinishToday(negar);
+    expect(openAgain.map((row) => row.id)).toContain(nightguard);
   });
 });
 

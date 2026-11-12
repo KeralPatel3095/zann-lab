@@ -82,6 +82,27 @@ export async function finishBenchCase(userId: string, caseId: string): Promise<A
   }
 }
 
+/** Puts one of Negar's finishes from today back on the open lists. */
+export async function undoBenchFinish(userId: string, caseId: string): Promise<ActionResult> {
+  try {
+    return await runAs(userId, async (tx, actor) => {
+      if (!canMarkBenchFinish(actor)) return { ok: false, message: "Only Negar can put a finished case back." };
+      const removed = await tx<{ id: string }[]>`
+        delete from case_bench_finishes
+        where case_id = ${caseId}
+          and finished_by = ${actor.id}
+          and work_date = (now() at time zone ${LAB_ZONE})::date
+        returning id
+      `;
+      if (!removed.length) return { ok: false, message: "That finish is not on your list for today." };
+      await addCaseEvent(tx, caseId, actor.id, "bench_finish_removed", { technician: actor.fullName });
+      return { ok: true as const };
+    });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 /** Today's finishes for Ana, Keral, and Parneet. Null when this person does not receive that board. */
 export async function listFinishedBoard(userId: string) {
   return runAs(userId, async (tx, actor) => {
