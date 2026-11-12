@@ -3,13 +3,31 @@ import { seedLabEmployees } from "./employees";
 import { migrateDatabase } from "./migrate";
 import { seedReferenceData } from "./reference";
 
-const state = globalThis as unknown as { __zannBoot?: Promise<void>; __zannTimer?: NodeJS.Timeout };
+const state = globalThis as unknown as {
+  __zannBoot?: Promise<void>;
+  __zannTimer?: NodeJS.Timeout;
+  __zannTrackerTimer?: NodeJS.Timeout;
+};
 
 export function bootDatabase() {
   if (!state.__zannBoot) {
     state.__zannBoot = start();
   }
   return state.__zannBoot;
+}
+
+/** Pull the Google Sheet on a timer without migrating or reseeding. */
+export function startTrackerSync() {
+  if (state.__zannTrackerTimer) return;
+  const syncTracker = () => {
+    import("../domain/tracker-sync")
+      .then(({ syncConfiguredTracker }) => syncConfiguredTracker())
+      .catch(() => {
+        console.error("Case tracker sync failed");
+      });
+  };
+  setTimeout(syncTracker, 20_000);
+  state.__zannTrackerTimer = setInterval(syncTracker, 5 * 60 * 1000);
 }
 
 async function start() {
@@ -26,12 +44,6 @@ async function start() {
     };
     run();
     state.__zannTimer = setInterval(run, 15 * 60 * 1000);
-    const syncTracker = () => {
-      import("../domain/tracker-sync").then(({ syncConfiguredTracker }) => syncConfiguredTracker()).catch(() => {
-        console.error("Case tracker sync failed");
-      });
-    };
-    setTimeout(syncTracker, 20_000);
-    setInterval(syncTracker, 5 * 60 * 1000);
+    startTrackerSync();
   }
 }

@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { DateTime } from "luxon";
 import { getSql, type Tx } from "../db/sql";
 import { LAB_ZONE } from "../scheduling/calendar";
@@ -125,15 +126,28 @@ export async function applyTrackerWorkbook(
   return { ok: true, message: syncMessage(counts), ...counts };
 }
 
+const syncState = globalThis as unknown as { __zannTrackerSync?: Promise<void> };
+
 export async function syncConfiguredTracker() {
+  if (syncState.__zannTrackerSync) return;
+  syncState.__zannTrackerSync = runConfiguredTracker().finally(() => {
+    syncState.__zannTrackerSync = undefined;
+  });
+  await syncState.__zannTrackerSync;
+}
+
+async function runConfiguredTracker() {
   const userId = await schedulerId();
   const downloaded = await loadTrackerBytes();
   if (!downloaded.ok) {
     await putSetting("tracker_sync_message", downloaded.message);
     return;
   }
+  const sheetHash = createHash("sha1").update(downloaded.bytes).digest("hex");
+  if ((await readSetting("tracker_sheet_hash")) === sheetHash) return;
   const result = await applyTrackerWorkbook(userId, downloaded.bytes, { automated: true });
-  await putSetting("tracker_sync_message", result.ok ? result.message : result.message);
+  await putSetting("tracker_sync_message", result.message);
+  if (result.ok) await putSetting("tracker_sheet_hash", sheetHash);
 }
 
 /** Prefer live Apps Script / Google URL; local Excel is only a backup. */

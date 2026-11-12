@@ -3,7 +3,11 @@ export async function registerNode() {
   loadEnvFiles();
   // Hosted Netlify/serverless: never migrate/seed/spawn embedded Postgres here.
   // Schema + staff are applied once via Supabase SQL + `npm run setup`.
-  if (process.env.DATABASE_URL || process.env.NETLIFY === "true") {
+  // A long-running host with DATABASE_URL still pulls the Google Sheet on a timer.
+  if (process.env.NETLIFY === "true") return;
+  if (process.env.DATABASE_URL) {
+    const { startTrackerSync } = await import("./lib/db/boot");
+    startTrackerSync();
     return;
   }
   try {
