@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3 } from "next/font/google";
+import { startTrackerSync } from "@/lib/db/boot";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -22,6 +23,7 @@ export const viewport: Viewport = {
 export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  startTrackerSync();
   return (
     <html lang="en">
       <body className={`${sourceSans.variable} ${sourceSans.className} antialiased`}>{children}</body>

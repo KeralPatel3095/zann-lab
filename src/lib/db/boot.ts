@@ -18,6 +18,7 @@ export function bootDatabase() {
 
 /** Pull the Google Sheet on a timer without migrating or reseeding. */
 export function startTrackerSync() {
+  if (process.env.NETLIFY === "true") return;
   if (state.__zannTrackerTimer) return;
   const syncTracker = () => {
     import("../domain/tracker-sync")
@@ -26,8 +27,8 @@ export function startTrackerSync() {
         console.error("Case tracker sync failed");
       });
   };
-  setTimeout(syncTracker, 20_000);
-  state.__zannTrackerTimer = setInterval(syncTracker, 5 * 60 * 1000);
+  setTimeout(syncTracker, 15_000);
+  state.__zannTrackerTimer = setInterval(syncTracker, 2 * 60 * 1000);
 }
 
 async function start() {

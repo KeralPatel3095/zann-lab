@@ -12,6 +12,9 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."tracker-sync-cron"]
+  timeout = 60
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 

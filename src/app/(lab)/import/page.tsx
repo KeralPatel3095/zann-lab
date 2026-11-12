@@ -2,7 +2,9 @@ import { requireActorPage } from "@/lib/auth/current";
 import { getSql } from "@/lib/db/sql";
 import { hasBackendAccess } from "@/lib/domain/common";
 import { trackerStatus } from "@/lib/domain/tracker-sync";
+import { LAB_ZONE } from "@/lib/scheduling/calendar";
 import { syncTrackerAction, uploadTrackerAction } from "@/server/actions";
+import { DateTime } from "luxon";
 
 export default async function ImportPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
@@ -10,6 +12,8 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
   const notice = (await searchParams).notice;
   const status = await trackerStatus(actor.id);
   const feedback = notice || status.message;
+  const checked = status.checkedAt ? DateTime.fromISO(status.checkedAt).setZone(LAB_ZONE) : null;
+  const checkedLabel = checked?.isValid ? checked.toFormat("h:mm a") : "";
   const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || "";
   const hasServiceAccount = Boolean(serviceEmail && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim());
   const sql = await getSql();
@@ -50,7 +54,9 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
       <form action={syncTrackerAction} className="lab-card grid gap-3 p-5">
         <h2 className="text-lg">1. Connect Google Sheet (live)</h2>
         <p className="text-sm">
-          Share the sheet with the service account email as Viewer, paste the normal sheet link, then Save and sync.
+          Share the sheet with the service account email as Viewer, then paste the sheet link.
+          The lab checks that sheet every 2 minutes and updates the cases on its own.
+          {checkedLabel ? ` Last check ${checkedLabel}.` : ""}
         </p>
         <label>
           Google Sheet link

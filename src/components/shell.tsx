@@ -1,4 +1,5 @@
 import { LabChrome } from "@/components/lab-nav";
+import { LiveRefresh } from "@/components/live-refresh";
 import { canSeeProductionReport } from "@/lib/bench-board";
 import { hasBackendAccess, hasManagementAccess, hasReceiptsAccess } from "@/lib/domain/common";
 import { roleLabels } from "@/lib/labels";
@@ -36,6 +37,7 @@ export async function Shell({ actor, children }: { actor: Actor; children: React
   return (
     <div className="lab-app">
       <LabChrome links={visible} name={actor.fullName} role={actor.jobTitle.trim() || roleLabels[actor.role] || actor.role} />
+      <LiveRefresh />
       <main className="lab-main">{children}</main>
     </div>
   );

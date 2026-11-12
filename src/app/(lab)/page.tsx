@@ -36,7 +36,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <header>
         <p className="lab-kicker">Lab</p>
         <h1 className="mt-1 text-3xl">Today</h1>
-        <p className="mt-1 text-sm">{today.toFormat("cccc, d LLLL yyyy")} · Toronto</p>
+        <p className="mt-1 text-sm">{today.toFormat("cccc, d LLLL yyyy")} · Toronto · the Google Sheet updates this desk every few minutes</p>
         <BenchLegend />
         <nav className="lab-jumps mt-4" aria-label="On this page">
           <a href="#finish-today">Finish today <strong>{data.finishToday.length}</strong></a>

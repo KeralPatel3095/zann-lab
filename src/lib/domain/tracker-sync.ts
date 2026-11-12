@@ -15,10 +15,11 @@ type SyncCounts = {
 
 export async function trackerStatus(userId: string) {
   const allowed = await runAs(userId, async (_tx, actor) => hasBackendAccess(actor));
-  if (!allowed) return { url: "", message: "" };
+  if (!allowed) return { url: "", message: "", checkedAt: "" };
   return {
     url: await readSetting("tracker_sheet_url"),
     message: await readSetting("tracker_sync_message"),
+    checkedAt: await readSetting("tracker_sync_checked_at"),
   };
 }
 
@@ -68,11 +69,15 @@ export async function applyTrackerWorkbook(
     `;
     return new Map(existing.map((row) => [row.case_number.toLowerCase(), row]));
   });
+  const pendingCases = parsed.cases.filter(
+    (row) => !trackerRowIsCurrent(row, byNumber.get(row.caseNumber.toLowerCase()) ?? null),
+  );
+  counts.unchanged = parsed.cases.length - pendingCases.length;
   const clinicByCode = await runAs(userId, async (tx) => {
     const clinics = await tx<{ id: string; dentist_code: string }[]>`select id, dentist_code from clinic_accounts`;
     return new Map(clinics.map((row) => [row.dentist_code.toLowerCase(), row.id]));
   });
-  const offices = [...new Set(parsed.cases.map((row) => row.officeName.trim()).filter(Boolean))];
+  const offices = [...new Set(pendingCases.map((row) => row.officeName.trim()).filter(Boolean))];
   for (let index = 0; index < offices.length; index += 15) {
     const slice = offices.slice(index, index + 15);
     await runAs(userId, async (tx) => {
@@ -90,10 +95,10 @@ export async function applyTrackerWorkbook(
   }
   const prepared = { actorId, byNumber, clinicByCode };
 
-  const batchSize = 8;
-  for (let index = 0; index < parsed.cases.length; index += batchSize) {
-    if (index % 200 === 0) console.log(`tracker cases ${index}/${parsed.cases.length}`);
-    const slice = parsed.cases.slice(index, index + batchSize);
+  const batchSize = 20;
+  if (pendingCases.length) console.log(`tracker sync writing ${pendingCases.length} changed cases`);
+  for (let index = 0; index < pendingCases.length; index += batchSize) {
+    const slice = pendingCases.slice(index, index + batchSize);
     await runAs(userId, async (tx) => {
       await tx.unsafe("set local statement_timeout = '60s'");
       for (const row of slice) {
@@ -108,8 +113,13 @@ export async function applyTrackerWorkbook(
       }
     });
   }
-  for (let index = 0; index < parsed.pickups.length; index += batchSize) {
-    const slice = parsed.pickups.slice(index, index + batchSize);
+  const knownPickups = await runAs(userId, async (tx) => {
+    const rows = await tx<{ fingerprint: string }[]>`select fingerprint from tracker_pickups`;
+    return new Set(rows.map((row) => row.fingerprint));
+  });
+  const pendingPickups = parsed.pickups.filter((pickup) => !knownPickups.has(pickup.fingerprint));
+  for (let index = 0; index < pendingPickups.length; index += batchSize) {
+    const slice = pendingPickups.slice(index, index + batchSize);
     await runAs(userId, async (tx) => {
       await tx.unsafe("set local statement_timeout = '60s'");
       for (const pickup of slice) {
@@ -144,6 +154,7 @@ async function runConfiguredTracker() {
     return;
   }
   const sheetHash = createHash("sha1").update(downloaded.bytes).digest("hex");
+  await putSetting("tracker_sync_checked_at", DateTime.now().setZone(LAB_ZONE).toISO() ?? "");
   if ((await readSetting("tracker_sheet_hash")) === sheetHash) return;
   const result = await applyTrackerWorkbook(userId, downloaded.bytes, { automated: true });
   await putSetting("tracker_sync_message", result.message);
@@ -198,8 +209,7 @@ async function writeCase(
   clinicByCode: Map<string, string>,
   existing: { id: string; tracker_fingerprint: string; tracker_status: string; tracker_due: string } | null,
 ): Promise<keyof Pick<SyncCounts, "created" | "updated" | "unchanged" | "invalid">> {
-  const dueSaved = !row.dueRaw.trim() || existing?.tracker_due.trim() === row.dueRaw.slice(0, 160);
-  if (existing?.tracker_fingerprint === row.fingerprint && existing.tracker_status.trim() && dueSaved) return "unchanged";
+  if (trackerRowIsCurrent(row, existing)) return "unchanged";
   await tx.unsafe("SAVEPOINT tracker_row");
   try {
     const mapped = mapStatus(row.status);
@@ -284,6 +294,15 @@ async function writeCase(
     await tx.unsafe("ROLLBACK TO SAVEPOINT tracker_row");
     return "invalid";
   }
+}
+
+export function trackerRowIsCurrent(
+  row: { fingerprint: string; dueRaw: string },
+  existing: { tracker_fingerprint: string; tracker_status: string; tracker_due: string } | null,
+) {
+  if (!existing?.tracker_status.trim()) return false;
+  const dueSaved = !row.dueRaw.trim() || existing.tracker_due.trim() === row.dueRaw.slice(0, 160);
+  return existing.tracker_fingerprint === row.fingerprint && dueSaved;
 }
 
 function mapStatus(status: string) {
