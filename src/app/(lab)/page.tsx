@@ -5,7 +5,6 @@ import { PanMark, ProductMark, BenchLegend } from "@/components/case-marks";
 import { FinishCaseButton } from "@/components/finish-case-button";
 import { FinishNotice } from "@/components/finish-notice";
 import { FinishedCaseTable } from "@/components/finished-case-table";
-import { OpenCaseTable } from "@/components/open-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
 import { listFinishedBoard, listMyFinishesToday } from "@/lib/domain/bench-finish";
@@ -42,7 +41,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <a href="#finish-today">Finish today <strong>{data.finishToday.length}</strong></a>
           {finishOwn ? <a href="#finished-today">You finished <strong>{myFinished.length}</strong></a> : null}
           {finishedBoard ? <a href="#finished-by-negar">Finished by Negar <strong>{finishedBoard.length}</strong></a> : null}
-          <a href="#still-open">Other open <strong>{data.stillOpen.length}</strong></a>
+          <Link href="/cases">Open cases</Link>
         </nav>
         <p className="mt-3 text-sm">
           <span className="lab-count text-3xl font-semibold text-[#545658]">{data.inLab}</span>
@@ -111,18 +110,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </table>
           {data.finishToday.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No cases to finish today.</p> : null}
         </div>
-      </section>
-      <section id="still-open" className="lab-card lab-sheet">
-        <div className="px-4 pt-4">
-          <h2 className="text-xl">Other open cases</h2>
-          <p className="mt-1 text-sm">
-            {data.stillOpen.length} {data.stillOpen.length === 1 ? "case is" : "cases are"} still open, but not on today’s list or on a day in Week ahead.
-            This list is the same for everyone. Late cases, cases with no clear date, and cases due later stay here.
-          </p>
-        </div>
-        {data.stillOpen.length > 0 ? (
-          <OpenCaseTable rows={data.stillOpen} showOffice={showOffice} finishReturnTo={finishOwn ? "/" : undefined} />
-        ) : <p className="px-4 py-4 text-sm">All open cases are already on today’s list or in Week ahead.</p>}
       </section>
       {finishedBoard ? (
         <section id="finished-by-negar" className="lab-card lab-card-done lab-sheet">

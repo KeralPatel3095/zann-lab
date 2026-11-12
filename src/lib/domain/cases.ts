@@ -15,7 +15,7 @@ import {
   setting,
   type ActionResult,
 } from "./common";
-import { canViewCaseType, ownerEmailForCaseType } from "../product-routing";
+import { ownerEmailForCaseType } from "../product-routing";
 import { loadTechnicians, rescheduleCase } from "./schedule";
 
 export type UnitInput = {
@@ -398,9 +398,10 @@ export async function releaseCase(userId: string, caseId: string, acknowledgeInf
 export async function listCases(userId: string, filters: { q?: string; status?: string; caseType?: string; indicator?: string; page?: number }) {
   return runAs(userId, async (tx, actor) => {
     const page = Math.max(1, filters.page ?? 1);
-    const limit = 25;
+    const limit = 50;
     const offset = (page - 1) * limit;
     const term = filters.q?.trim() ? `%${filters.q.trim().replace(/[\\%_]/g, "\\$&")}%` : null;
+    const openOnly = !term && !filters.status && !filters.indicator && !filters.caseType;
     const rows = await tx<{
       id: string;
       case_number: string;
@@ -434,6 +435,15 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
         and (${filters.status ?? null}::text is null or cases.overall_status::text = ${filters.status ?? null})
         and (${filters.caseType ?? null}::text is null or cases.case_type = ${filters.caseType ?? null})
         and (${filters.indicator ?? null}::text is null or cases.deadline_indicator::text = ${filters.indicator ?? null})
+        and (
+          ${openOnly} = false
+          or (
+            cases.overall_status in ('in_production', 'ready_for_dispatch', 'on_hold')
+            and not cases.historical
+            and not app.case_is_bench_finished(cases.id)
+            and lower(btrim(cases.tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
+          )
+        )
       order by cases.requested_delivery_at nulls last, cases.created_at desc
       limit ${limit} offset ${offset}
     `;
@@ -447,6 +457,15 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
         and (${filters.status ?? null}::text is null or cases.overall_status::text = ${filters.status ?? null})
         and (${filters.caseType ?? null}::text is null or cases.case_type = ${filters.caseType ?? null})
         and (${filters.indicator ?? null}::text is null or cases.deadline_indicator::text = ${filters.indicator ?? null})
+        and (
+          ${openOnly} = false
+          or (
+            cases.overall_status in ('in_production', 'ready_for_dispatch', 'on_hold')
+            and not cases.historical
+            and not app.case_is_bench_finished(cases.id)
+            and lower(btrim(cases.tracker_status)) not in ('delivered', 'invoice', 'scheduled', 'picked up', 'picked-up')
+          )
+        )
     `;
     const taskRows = rows.length
       ? await tx<{ case_id: string; department_name: string; title: string; sort_order: number; task_status: string }[]>`
@@ -457,7 +476,7 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
           order by t.sort_order
         `
       : [];
-    const views = rows.filter((row) => canViewCaseType(actor, row.case_type)).map((row) => {
+    const views = rows.map((row) => {
       const open = taskRows.find((task) => task.case_id === row.id && !["completed", "cancelled"].includes(task.task_status));
       const production: ProductionCase = {
         id: row.id,
@@ -493,7 +512,7 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
         : null;
       return { ...caseViewForActor(actor, production, clinic), trackerDue: row.tracker_due };
     });
-    return { ok: true as const, rows: views, total: count?.total ?? 0, page, actor };
+    return { ok: true as const, rows: views, total: count?.total ?? 0, page, openOnly, actor };
   });
 }
 

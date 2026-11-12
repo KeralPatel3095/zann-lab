@@ -12,22 +12,36 @@ import { benchRowClass } from "@/lib/product-routing";
 export default async function CasesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; indicator?: string; page?: string }> }) {
   const actor = await requireActorPage();
   const params = await searchParams;
+  const page = Number(params.page ?? 1);
   const result = await listCases(actor.id, {
     q: params.q,
     status: params.status,
     indicator: params.indicator,
-    page: Number(params.page ?? 1),
+    page,
   });
+  const pages = Math.max(1, Math.ceil(result.total / 50));
+  const queryFor = (nextPage: number) => {
+    const search = new URLSearchParams();
+    if (params.q) search.set("q", params.q);
+    if (params.status) search.set("status", params.status);
+    if (params.indicator) search.set("indicator", params.indicator);
+    if (nextPage > 1) search.set("page", String(nextPage));
+    const text = search.toString();
+    return text ? `/cases?${text}` : "/cases";
+  };
   return (
     <div className="grid gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="lab-kicker">Case tracker</p>
-          <h1 className="mt-1 text-3xl">Cases</h1>
-        </div>
+      <div>
+        <p className="lab-kicker">Case tracker</p>
+        <h1 className="mt-1 text-3xl">Cases</h1>
+        <p className="mt-1 text-sm">
+          {result.openOnly
+            ? "Open cases for everyone in the lab. Search to find any case."
+            : "Search results for everyone in the lab."}
+        </p>
       </div>
-      <form className="lab-card grid gap-3 p-4 md:grid-cols-4">
-        <label>Search<input name="q" defaultValue={params.q ?? ""} placeholder="Case, PAN, dentist code, patient" /></label>
+      <form method="get" className="lab-card grid gap-3 p-4 md:grid-cols-4">
+        <label>Search<input name="q" defaultValue={params.q ?? ""} placeholder="Case, patient, or PAN" /></label>
         <label>Status
           <select name="status" defaultValue={params.status ?? ""}>
             <option value="">Any status</option>
@@ -40,7 +54,10 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
             {Object.entries(indicatorLabels).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
           </select>
         </label>
-        <div className="flex items-end"><button className="rounded-md border border-[#545658] bg-white px-4 py-2 text-sm text-[#545658]">Filter</button></div>
+        <div className="flex items-end gap-2">
+          <button className="rounded-md border border-[#545658] bg-white px-4 py-2 text-sm text-[#545658]">Search</button>
+          {params.q || params.status || params.indicator ? <Link href="/cases" className="text-sm text-teal-800">Clear</Link> : null}
+        </div>
       </form>
       <div className="lab-card lab-sheet">
         <table>
@@ -65,8 +82,15 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
             ))}
           </tbody>
         </table>
+        {result.rows.length === 0 ? <p className="px-4 py-4 text-sm">No cases match that search.</p> : null}
       </div>
-      <p className="text-sm text-zinc-500">{result.total} cases. Page {result.page}.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <p className="text-zinc-500">{result.total} {result.openOnly ? "open cases" : "cases"}. Page {result.page} of {pages}.</p>
+        <p className="flex gap-3">
+          {result.page > 1 ? <Link className="text-teal-800" href={queryFor(result.page - 1)}>Previous</Link> : null}
+          {result.page < pages ? <Link className="text-teal-800" href={queryFor(result.page + 1)}>Next</Link> : null}
+        </p>
+      </div>
       <p className="text-sm"><a className="text-teal-800" href={`/api/export?format=xlsx`}>Export spreadsheet</a></p>
     </div>
   );

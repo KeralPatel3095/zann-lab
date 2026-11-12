@@ -3,10 +3,9 @@ import { DateTime } from "luxon";
 import { canMarkBenchFinish, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark } from "@/components/case-marks";
 import { FinishCaseButton } from "@/components/finish-case-button";
-import { OpenCaseTable } from "@/components/open-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
-import { listCasesDueBetween, listStillOpen } from "@/lib/domain/reports";
+import { listCasesDueBetween } from "@/lib/domain/reports";
 import { EARLY_FINISH_DAYS, operationalDueAt } from "@/lib/office-rules";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { belongsOnFinishToday, dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "@/lib/scheduling/calendar";
@@ -22,7 +21,6 @@ export default async function DueWeekPage({ searchParams }: { searchParams: Prom
   const dueStart = start.plus({ days: 1 }).toISODate() ?? "";
   const dueEnd = end.plus({ days: 4 + EARLY_FINISH_DAYS }).toISODate() ?? "";
   const found = await listCasesDueBetween(actor.id, dueStart, dueEnd);
-  const stillOpen = await listStillOpen(actor.id);
   const rows = found.filter((row) => {
     if (!row.requested_delivery_at) return false;
     const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
@@ -104,18 +102,7 @@ export default async function DueWeekPage({ searchParams }: { searchParams: Prom
         );
       })}
       {rows.length === 0 ? <p className="lab-card p-4 text-sm">No cases on these days.</p> : null}
-      <section id="still-open" className="lab-card lab-sheet">
-        <div className="px-4 pt-4">
-          <h2 className="text-lg">Other open cases</h2>
-          <p className="mt-1 text-sm">
-            {stillOpen.length} {stillOpen.length === 1 ? "case is" : "cases are"} still open, but not on a day in the list above.
-            This list is the same for everyone. Late cases, cases with no clear date, and cases due later stay here.
-          </p>
-        </div>
-        {stillOpen.length > 0 ? (
-          <OpenCaseTable rows={stillOpen} showOffice={showOffice} finishReturnTo={finishOwn ? "/due/week" : undefined} />
-        ) : <p className="px-4 py-4 text-sm">All other open cases are already on a day above, or on today’s list.</p>}
-      </section>
+      <p className="text-sm"><Link className="text-teal-800" href="/cases">Open cases are on Cases, where you can search.</Link></p>
     </div>
   );
 }
