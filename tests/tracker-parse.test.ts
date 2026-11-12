@@ -11,6 +11,7 @@ async function workbook() {
   october.addRow([44002, "Ben Sample", "Harbourview Dental", "PAN-2", "Crown", "In Lab", "Due date not mentioned", ""]);
     october.addRow([44002, "Ben Sample", "Harbourview Dental", "PAN-2", "Crown", "Packing", "Oct 6 by 12pm", "Rush note"]);
     october.addRow([44003, "Cara Sample", "Harbourview Dental", "PAN-3", "Nightguard", "Packing", "No due date mentioned / 28 Oct", ""]);
+    october.addRow([44004, "Golrokh Sample", "Chaplin Dental", "753", "Nightguard", "In Lab", "Nov10 by 11:30 am", ""]);
   const pickups = book.addWorksheet("October Pickups");
   pickups.addRow(["October 2nd"]);
   pickups.addRow(["Pickup slip 100"]);
@@ -20,8 +21,10 @@ async function workbook() {
 describe("case tracker workbook", () => {
   it("keeps the latest row for a case and reads pickup lines", async () => {
     const parsed = await parseTrackerWorkbook(await workbook());
-    expect(parsed.cases.map((row) => row.caseNumber)).toEqual(["44001", "44002", "44003"]);
+    expect(parsed.cases.map((row) => row.caseNumber)).toEqual(["44001", "44002", "44003", "44004"]);
     expect(parsed.cases[2].dueOn).toBe("2026-10-28");
+    expect(parsed.cases[3].dueOn).toBe("2026-11-10");
+    expect(parsed.cases[3].dueRaw).toBe("Nov10 by 11:30 am");
     const delivered = parsed.cases[0];
     const open = parsed.cases[1];
     expect(delivered.receivedOn).toBe("2026-10-01");

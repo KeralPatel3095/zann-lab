@@ -4,6 +4,7 @@ import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
 import { listCases } from "@/lib/domain/cases";
 import { formatStamp } from "@/lib/format";
+import { dueSheetLabel } from "@/lib/scheduling/calendar";
 import { caseStatusLabels, indicatorLabels } from "@/lib/labels";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { benchRowClass } from "@/lib/product-routing";
@@ -56,7 +57,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
                 <td data-label="Patient">{row.patientName}</td>
                 <td data-label="PAN"><PanMark value={row.panNumber} status={row.overallStatus} /></td>
                 <td data-label="Type"><ProductMark name={row.caseType} /></td>
-                <td data-label="Due">{formatStamp(row.requestedDeliveryAt)}</td>
+                <td data-label="Due">{row.trackerDue ? dueSheetLabel(row.trackerDue, row.requestedDeliveryAt) : formatStamp(row.requestedDeliveryAt)}</td>
                 <td data-label="Stage">{row.currentStage ?? "—"}</td>
                 <td data-label="Status"><StatusPill value={row.overallStatus} trackerStatus={row.trackerStatus} /></td>
                 <td data-label="Risk"><StatusPill value={row.deadlineIndicator} kind="indicator" /></td>

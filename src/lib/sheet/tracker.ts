@@ -189,7 +189,7 @@ function parseDueText(raw: string, receivedOn: string | null) {
     const parsed = namedDate(dayFirst[1], dayFirst[2], year);
     if (parsed) return parsed;
   }
-  const monthFirst = text.match(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
+  const monthFirst = text.match(/\b([A-Za-z]{3,9})\.?\s*(\d{1,2})(?:st|nd|rd|th)?\b/i);
   if (!monthFirst) return null;
   return namedDate(monthFirst[2], monthFirst[1], year);
 }

@@ -417,13 +417,14 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
       deadline_indicator: string;
       schedule_feasible: boolean;
       tracker_status: string;
+      tracker_due: string;
       clinic_name: string | null;
       dentist_name: string | null;
     }[]>`
       select cases.id, cases.case_number, cases.dentist_code, cases.patient_name, cases.pan_number, cases.case_type,
              cases.received_at, cases.requested_delivery_at, cases.projected_completion_at, cases.priority::text as priority,
              cases.overall_status::text as overall_status, cases.dispatch_status::text as dispatch_status,
-             cases.deadline_indicator::text as deadline_indicator, cases.schedule_feasible, cases.tracker_status,
+             cases.deadline_indicator::text as deadline_indicator, cases.schedule_feasible, cases.tracker_status, cases.tracker_due,
              clinic_account.clinic_name, clinic_account.dentist_name
       from cases
       left join case_clinic_links clinic_link on clinic_link.case_id = cases.id
@@ -490,7 +491,7 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
       const clinic = row.clinic_name && row.dentist_name
         ? { dentistName: row.dentist_name, clinicName: row.clinic_name, email: "", phone: "", billingNotes: "" }
         : null;
-      return caseViewForActor(actor, production, clinic);
+      return { ...caseViewForActor(actor, production, clinic), trackerDue: row.tracker_due };
     });
     return { ok: true as const, rows: views, total: count?.total ?? 0, page, actor };
   });
