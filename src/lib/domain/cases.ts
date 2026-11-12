@@ -401,7 +401,10 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
     const limit = 50;
     const offset = (page - 1) * limit;
     const term = filters.q?.trim() ? `%${filters.q.trim().replace(/[\\%_]/g, "\\$&")}%` : null;
-    const openOnly = !term && !filters.status && !filters.indicator && !filters.caseType;
+    const status = filters.status?.trim() || null;
+    const caseType = filters.caseType?.trim() || null;
+    const indicator = filters.indicator?.trim() || null;
+    const openOnly = !term && !status && !indicator && !caseType;
     const rows = await tx<{
       id: string;
       case_number: string;
@@ -432,9 +435,9 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
       left join clinic_accounts clinic_account on clinic_account.id = clinic_link.clinic_account_id
       where (${term}::text is null or cases.case_number ilike ${term} or cases.pan_number ilike ${term} or cases.dentist_code ilike ${term}
              or cases.patient_name ilike ${term} or cases.case_type ilike ${term} or clinic_account.clinic_name ilike ${term})
-        and (${filters.status ?? null}::text is null or cases.overall_status::text = ${filters.status ?? null})
-        and (${filters.caseType ?? null}::text is null or cases.case_type = ${filters.caseType ?? null})
-        and (${filters.indicator ?? null}::text is null or cases.deadline_indicator::text = ${filters.indicator ?? null})
+        and (${status}::text is null or cases.overall_status::text = ${status})
+        and (${caseType}::text is null or cases.case_type = ${caseType})
+        and (${indicator}::text is null or cases.deadline_indicator::text = ${indicator})
         and (
           ${openOnly} = false
           or (
@@ -454,9 +457,9 @@ export async function listCases(userId: string, filters: { q?: string; status?: 
       left join clinic_accounts clinic_account on clinic_account.id = clinic_link.clinic_account_id
       where (${term}::text is null or cases.case_number ilike ${term} or cases.pan_number ilike ${term} or cases.dentist_code ilike ${term}
              or cases.patient_name ilike ${term} or cases.case_type ilike ${term} or clinic_account.clinic_name ilike ${term})
-        and (${filters.status ?? null}::text is null or cases.overall_status::text = ${filters.status ?? null})
-        and (${filters.caseType ?? null}::text is null or cases.case_type = ${filters.caseType ?? null})
-        and (${filters.indicator ?? null}::text is null or cases.deadline_indicator::text = ${filters.indicator ?? null})
+        and (${status}::text is null or cases.overall_status::text = ${status})
+        and (${caseType}::text is null or cases.case_type = ${caseType})
+        and (${indicator}::text is null or cases.deadline_indicator::text = ${indicator})
         and (
           ${openOnly} = false
           or (
