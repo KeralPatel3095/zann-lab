@@ -45,7 +45,7 @@ describe("bench finish records", () => {
 
   beforeAll(async () => {
     const sql = await getSql();
-    negar = await person(PRODUCT_OWNERS.negar, "Negar Qureshi", "technician");
+    negar = await person(PRODUCT_OWNERS.negar, "Negar Ghasemi", "technician");
     zoca = await person(PRODUCT_OWNERS.zoca, "Zoca Bogdanovic", "technician");
     ana = await person("ana.bogdanovic@zann-lab.test", "Ana Bogdanovic", "administrator");
     const due = DateTime.now().setZone(LAB_ZONE).plus({ days: 1 }).toUTC().toISO();
@@ -67,7 +67,7 @@ describe("bench finish records", () => {
     const board = await listFinishedBoard(ana);
     expect(board?.map((row) => row.id)).toContain(nightguard);
     expect(board?.map((row) => row.id)).not.toContain(crown);
-    expect(board?.every((row) => row.technician_name === "Negar Qureshi")).toBe(true);
+    expect(board?.every((row) => row.technician_name === "Negar Ghasemi")).toBe(true);
 
     const report = await productionReport(ana);
     const today = DateTime.now().setZone(LAB_ZONE).toISODate();
@@ -101,7 +101,10 @@ describe("bench finish records", () => {
 async function person(email: string, name: string, role: string) {
   const sql = await getSql();
   const [existing] = await sql<{ id: string }[]>`select id from profiles where lower(email) = lower(${email})`;
-  if (existing) return existing.id;
+  if (existing) {
+    await sql`update profiles set full_name = ${name} where id = ${existing.id}`;
+    return existing.id;
+  }
   const [row] = await sql<{ id: string }[]>`
     insert into profiles (full_name, email, role, can_view_clinic_identity)
     values (${name}, ${email}, ${role}::app_role, ${role !== "technician"})

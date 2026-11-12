@@ -10,7 +10,7 @@ export const labEmployees = [
   { fullName: "Ned Bogdanovic", email: "ned.bogdanovic@zann-lab.test", password: "NedBogdanovic@nov", role: "technician" as StaffRole, title: "Technician" },
   { fullName: "Zoca Bogdanovic", email: "zoca.bogdanovic@zann-lab.test", password: "ZocaBogdanovic@nov", role: "technician" as StaffRole, title: "Technician" },
   { fullName: "Parneet Kaur", email: "parneet.kaur@zann-lab.test", password: "ParneetKaur@sept", role: "administrator" as StaffRole, title: "Administrator" },
-  { fullName: "Negar Qureshi", email: "negar.qureshi@zann-lab.test", password: "Negarqureshi@sept", role: "technician" as StaffRole, title: "Technician" },
+  { fullName: "Negar Ghasemi", email: "negar.qureshi@zann-lab.test", password: "Negarqureshi@sept", role: "technician" as StaffRole, title: "Technician" },
 ] as const;
 
 export async function seedLabEmployees() {
