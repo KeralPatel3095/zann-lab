@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { canMarkBenchFinish, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark } from "@/components/case-marks";
+import { FinishCaseButton } from "@/components/finish-case-button";
 import { StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
 import { requireActorPage } from "@/lib/auth/current";
+import { benchFinishForCase } from "@/lib/domain/bench-finish";
 import { getCase } from "@/lib/domain/cases";
 import { formatStamp } from "@/lib/format";
 import { canViewClinicIdentity } from "@/lib/privacy";
@@ -15,6 +18,8 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const detail = await getCase(actor.id, id);
   if (!detail) return <p>Case not found.</p>;
   const record = detail.case;
+  const bench = await benchFinishForCase(actor.id, id);
+  const showFinish = canMarkBenchFinish(actor) && caseIsNegarProduct(record.caseType) && record.overallStatus === "in_production" && !record.historical && !bench;
   const desk = true;
   return (
     <div className="grid gap-4">
@@ -29,6 +34,14 @@ export default async function CasePage({ params, searchParams }: { params: Promi
           <StatusPill value={record.deadlineIndicator} kind="indicator" />
         </div>
       </header>
+      {bench ? <p className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm">Finished by {bench.technician_name} on {formatStamp(bench.finished_at)}. It is on Ana, Keral, and Parneet’s board.</p> : null}
+      {showFinish ? (
+        <section className="rounded-xl border border-zinc-200 bg-white p-4">
+          <h2 className="font-semibold">Finish this case</h2>
+          <p className="mt-1 text-sm text-zinc-600">This sends the case to Ana, Keral, and Parneet. It leaves your open list and counts on today’s production.</p>
+          <div className="mt-3"><FinishCaseButton caseId={record.id} returnTo={`/cases/${record.id}`} /></div>
+        </section>
+      ) : null}
       {record.scheduleNote ? <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">{record.scheduleNote}</p> : null}
       <section className="grid gap-2 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-3">
         <p className="flex items-center gap-2">Type: <ProductMark name={record.caseType} /></p>

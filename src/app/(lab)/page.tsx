@@ -1,33 +1,49 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
+import { canMarkBenchFinish, canSeeFinishedBoard, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark } from "@/components/case-marks";
+import { FinishCaseButton } from "@/components/finish-case-button";
+import { FinishedCaseTable } from "@/components/finished-case-table";
+import { OpenCaseTable } from "@/components/open-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
+import { listFinishedBoard, listMyFinishesToday } from "@/lib/domain/bench-finish";
 import { todayBoard } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
+  const query = await searchParams;
   const data = await todayBoard(actor.id);
   const showOffice = canViewClinicIdentity(actor);
+  const finishOwn = canMarkBenchFinish(actor);
+  const finishedBoard = canSeeFinishedBoard(actor) ? await listFinishedBoard(actor.id) : null;
+  const myFinished = finishOwn ? await listMyFinishesToday(actor.id) : [];
   const today = DateTime.now().setZone(LAB_ZONE);
   const openTasks = data.myTasks.reduce((sum, row) => sum + row.total, 0);
   return (
     <div className="grid gap-5">
+      {query.notice ? <p className="rounded-md bg-amber-50 p-3 text-sm">{query.notice}</p> : null}
       <header>
-        <p className="lab-kicker">Operations</p>
+        <p className="lab-kicker">Lab</p>
         <h1 className="mt-1 text-3xl">Today</h1>
         <p className="mt-1 text-sm">{today.toFormat("cccc, d LLLL yyyy")} · Toronto</p>
+        <p className="mt-3 text-sm">
+          <span className="lab-count text-3xl font-semibold text-[#545658]">{data.inLab}</span>
+          {" "}{data.inLab === 1 ? "case" : "cases"} in the lab
+          {data.readyToPack > 0 ? ` · ${data.readyToPack} ready to pack` : ""}
+          {data.onHold > 0 ? ` · ${data.onHold} on hold` : ""}
+        </p>
       </header>
       <section className="lab-card p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl">Finish today</h2>
-            <p className="mt-1 text-sm">{data.finishToday.length} {data.finishToday.length === 1 ? "case" : "cases"} in production</p>
+            <p className="mt-1 text-sm">{data.finishToday.length} {data.finishToday.length === 1 ? "case" : "cases"} to finish today</p>
           </div>
           <div className="lab-actions">
-            <Link href="/due/tomorrow" className="lab-btn">Full list</Link>
+            <Link href="/due/tomorrow" className="lab-btn">See the full list</Link>
             <Link href="/due/week" className="lab-btn">Week ahead · {data.finishWeek.length}</Link>
           </div>
         </div>
@@ -42,6 +58,7 @@ export default async function HomePage() {
                 <th>Type</th>
                 <th>Due</th>
                 <th>Status</th>
+                {finishOwn ? <th></th> : null}
               </tr>
             </thead>
             <tbody>
@@ -55,14 +72,57 @@ export default async function HomePage() {
                     <td data-label="Type"><ProductMark name={row.case_type} /></td>
                     <td data-label="Due">{dueSheetLabel(row.tracker_due, row.requested_delivery_at)}</td>
                     <td data-label="Status"><StatusPill value={row.overall_status} trackerStatus={row.tracker_status} /></td>
+                    {finishOwn ? (
+                      <td data-label="Finish">
+                        {caseIsNegarProduct(row.case_type) ? <FinishCaseButton caseId={row.id} returnTo="/" /> : null}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {data.finishToday.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No open cases are due tomorrow.</p> : null}
+          {data.finishToday.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No cases to finish today.</p> : null}
         </div>
       </section>
+      <section id="still-open" className="lab-card lab-sheet">
+        <div className="px-4 pt-4">
+          <h2 className="text-xl">Other open cases</h2>
+          <p className="mt-1 text-sm">
+            {data.stillOpen.length} {data.stillOpen.length === 1 ? "case is" : "cases are"} still open, but not on today’s list or on a day in Week ahead.
+            Late cases, cases with no clear date, and cases due later stay here so you can still find them.
+          </p>
+        </div>
+        {data.stillOpen.length > 0 ? (
+          <OpenCaseTable rows={data.stillOpen} showOffice={showOffice} finishReturnTo={finishOwn ? "/" : undefined} />
+        ) : <p className="px-4 py-4 text-sm">All open cases are already on today’s list or in Week ahead.</p>}
+      </section>
+      {finishedBoard ? (
+        <section className="lab-card lab-sheet">
+          <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
+            <div>
+              <h2 className="text-xl">Finished by Negar</h2>
+              <p className="mt-1 text-sm">
+                {finishedBoard.length} {finishedBoard.length === 1 ? "case" : "cases"} finished today.
+                These stay off the open lists so they are not mixed with work still in the lab.
+              </p>
+            </div>
+            <Link href="/production" className="lab-btn">Daily production</Link>
+          </div>
+          <FinishedCaseTable rows={finishedBoard} showOffice={showOffice} />
+        </section>
+      ) : null}
+      {finishOwn ? (
+        <section className="lab-card lab-sheet">
+          <div className="px-4 pt-4">
+            <h2 className="text-xl">You finished today</h2>
+            <p className="mt-1 text-sm">
+              {myFinished.length} {myFinished.length === 1 ? "case is" : "cases are"} on Ana, Keral, and Parneet’s board.
+            </p>
+          </div>
+          <FinishedCaseTable rows={myFinished} showOffice={false} />
+        </section>
+      ) : null}
       {openTasks > 0 ? (
         <p className="text-sm"><Link href="/tasks">My tasks · {openTasks}</Link></p>
       ) : null}

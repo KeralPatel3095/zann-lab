@@ -6,6 +6,8 @@ import { currentActor } from "@/lib/auth/current";
 import { attemptLocalLogin } from "@/lib/auth/login";
 import { signSession } from "@/lib/auth/session";
 import { changeOwnPassword, createStaff, saveDepartment, saveHoliday, setStaffActive, setStaffPassword, updateSetting, updateStage } from "@/lib/domain/admin";
+import { safeReturnPath, withNotice } from "@/lib/bench-board";
+import { finishBenchCase } from "@/lib/domain/bench-finish";
 import { changeDeliveryDate, createCase, holdCase, recordDispatch, recordMissingInformation, releaseCase, resumeCase, type CaseInput } from "@/lib/domain/cases";
 import { assignTask, recordQuality, transitionTask } from "@/lib/domain/tasks";
 import { commitImport } from "@/lib/domain/transfer";
@@ -116,6 +118,15 @@ export async function resumeCaseAction(formData: FormData) {
   const id = await actorId();
   await resumeCase(id, text(formData, "case_id"));
   redirect(`/cases/${text(formData, "case_id")}`);
+}
+
+export async function finishCaseAction(formData: FormData) {
+  const id = await actorId();
+  const caseId = text(formData, "case_id");
+  const back = safeReturnPath(text(formData, "return_to"), `/cases/${caseId}`);
+  const result = await finishBenchCase(id, caseId);
+  if (!result.ok) redirect(withNotice(back, result.message));
+  redirect(withNotice(back, "Case finished. It is on Ana, Keral, and Parneet’s board."));
 }
 
 export async function deliveryAction(formData: FormData) {

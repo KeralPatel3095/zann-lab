@@ -118,6 +118,11 @@ a.bg-teal-800:hover,
   color: white;
 }
 
+.lab-btn-compact {
+  padding: 0.28rem 0.6rem;
+  font-size: 0.75rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

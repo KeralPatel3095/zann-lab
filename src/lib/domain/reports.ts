@@ -45,6 +45,7 @@ export async function todayBoard(userId: string) {
       from cases
       where overall_status = 'in_production'
         and not historical
+        and not app.case_is_bench_finished(id)
         and requested_delivery_at is not null
         and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
       order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
@@ -75,7 +76,20 @@ export async function todayBoard(userId: string) {
         and task_status not in ('completed', 'cancelled')
       group by task_status
     `;
-    return { finishToday, finishWeek: weekdayWeek, myTasks };
+    const stillOpen = await loadStillOpen(tx, actor, now);
+    const openRows = await tx<{ case_type: string; overall_status: string; total: number }[]>`
+      select case_type, overall_status::text as overall_status, count(*)::int as total
+      from cases
+      where not historical
+        and not app.case_is_bench_finished(id)
+        and overall_status in ('in_production', 'ready_for_dispatch', 'on_hold')
+      group by case_type, overall_status
+    `;
+    const visible = openRows.filter((row) => canViewCaseType(actor, row.case_type));
+    const inLab = visible.filter((row) => row.overall_status === "in_production").reduce((sum, row) => sum + row.total, 0);
+    const readyToPack = visible.filter((row) => row.overall_status === "ready_for_dispatch").reduce((sum, row) => sum + row.total, 0);
+    const onHold = visible.filter((row) => row.overall_status === "on_hold").reduce((sum, row) => sum + row.total, 0);
+    return { finishToday, finishWeek: weekdayWeek, myTasks, stillOpen, inLab, readyToPack, onHold };
   });
 }
 
@@ -103,6 +117,7 @@ export async function dashboard(userId: string) {
       from cases
       where overall_status = 'in_production'
         and not historical
+        and not app.case_is_bench_finished(id)
         and requested_delivery_at is not null
         and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
       order by (requested_delivery_at at time zone ${LAB_ZONE})::date, case_number
@@ -242,6 +257,52 @@ export async function listFinishToday(userId: string) {
   return runAs(userId, async (tx, actor) => loadFinishToday(tx, actor));
 }
 
+export async function listStillOpen(userId: string) {
+  return runAs(userId, async (tx, actor) => loadStillOpen(tx, actor, DateTime.now().setZone(LAB_ZONE)));
+}
+
+/** Open cases that are not on Finish today and not on a weekday in the week-ahead window. */
+async function loadStillOpen(
+  tx: Tx,
+  actor: { email: string; role: import("../privacy").StaffRole; canViewClinicIdentity: boolean },
+  now: DateTime,
+) {
+  const showClinic = canViewClinicIdentity(actor);
+  const ahead = weekAheadWindow(now);
+  const rows = await tx<FinishTodayCase[]>`
+    select c.id, c.case_number, c.patient_name, c.pan_number, c.case_type,
+           c.requested_delivery_at, c.received_at, c.overall_status::text as overall_status,
+           c.tracker_status, c.tracker_due, c.dentist_code,
+           a.clinic_name
+    from cases c
+    left join case_clinic_links l on l.case_id = c.id
+    left join clinic_accounts a on a.id = l.clinic_account_id
+    where c.overall_status in ('in_production', 'ready_for_dispatch', 'on_hold')
+      and not c.historical
+      and not app.case_is_bench_finished(c.id)
+    order by c.requested_delivery_at nulls last, c.case_number
+  `;
+  return rows
+    .filter((row) => canViewCaseType(actor, row.case_type))
+    .filter((row) => {
+      const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
+      if (!opDue) return true;
+      if (
+        belongsOnFinishToday({
+          dueAt: row.requested_delivery_at,
+          trackerDue: row.tracker_due,
+          operationalDue: opDue,
+          now,
+        })
+      ) {
+        return false;
+      }
+      const workDay = workDayBeforeDue(opDue, row.tracker_due);
+      return !(workDay >= ahead.start && workDay <= ahead.end && workDay.weekday <= 5);
+    })
+    .map((row) => ({ ...row, clinic_name: showClinic ? row.clinic_name : null }));
+}
+
 async function loadFinishToday(tx: Tx, actor: { email: string; role: import("../privacy").StaffRole; canViewClinicIdentity: boolean }) {
   const zone = LAB_ZONE;
   const now = DateTime.now().setZone(LAB_ZONE);
@@ -259,6 +320,7 @@ async function loadFinishToday(tx: Tx, actor: { email: string; role: import("../
     left join clinic_accounts a on a.id = l.clinic_account_id
     where c.overall_status = 'in_production'
       and not c.historical
+      and not app.case_is_bench_finished(c.id)
       and c.requested_delivery_at is not null
       and (c.requested_delivery_at at time zone ${zone})::date between ${today}::date and ${horizon}::date
     order by (c.requested_delivery_at at time zone ${zone})::date nulls last, c.case_number
@@ -300,6 +362,7 @@ export async function listCasesDueBetween(userId: string, start: string, end: st
       left join clinic_accounts a on a.id = l.clinic_account_id
       where c.overall_status = 'in_production'
         and not c.historical
+        and not app.case_is_bench_finished(c.id)
         and c.requested_delivery_at is not null
         and (c.requested_delivery_at at time zone ${LAB_ZONE})::date between ${start}::date and ${end}::date
       order by (c.requested_delivery_at at time zone ${LAB_ZONE})::date, c.case_number
@@ -315,16 +378,16 @@ export async function managementSummary(userId: string) {
     if (!hasManagementAccess(actor)) return null;
     const [totals] = await tx<{ in_lab: number; ready_to_pack: number; finished: number; late: number }[]>`
       select
-        count(*) filter (where overall_status = 'in_production' and not historical)::int as in_lab,
+        count(*) filter (where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id))::int as in_lab,
         count(*) filter (where overall_status = 'ready_for_dispatch')::int as ready_to_pack,
         count(*) filter (where overall_status in ('delivered', 'dispatched') or tracker_status ilike 'scheduled')::int as finished,
-        count(*) filter (where overall_status = 'in_production' and not historical and deadline_indicator = 'overdue')::int as late
+        count(*) filter (where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id) and deadline_indicator = 'overdue')::int as late
       from cases
     `;
     const products = await tx<{ case_type: string; total: number }[]>`
       select case_type, count(*)::int as total
       from cases
-      where overall_status = 'in_production' and not historical
+      where overall_status = 'in_production' and not historical and not app.case_is_bench_finished(id)
       group by case_type
       order by count(*) desc, case_type
     `;
@@ -336,6 +399,7 @@ export async function managementSummary(userId: string) {
       from cases
       where overall_status = 'in_production'
         and not historical
+        and not app.case_is_bench_finished(id)
         and requested_delivery_at is not null
         and (requested_delivery_at at time zone ${LAB_ZONE})::date between ${dueStart}::date and ${dueEnd}::date
     `;

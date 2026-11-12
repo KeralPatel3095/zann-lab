@@ -1,21 +1,27 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
+import { canMarkBenchFinish, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark } from "@/components/case-marks";
+import { FinishCaseButton } from "@/components/finish-case-button";
+import { OpenCaseTable } from "@/components/open-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
-import { listCasesDueBetween } from "@/lib/domain/reports";
+import { listCasesDueBetween, listStillOpen } from "@/lib/domain/reports";
 import { EARLY_FINISH_DAYS, operationalDueAt } from "@/lib/office-rules";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { belongsOnFinishToday, dueSheetLabel, LAB_ZONE, weekAheadWindow, workDayBeforeDue } from "@/lib/scheduling/calendar";
 
-export default async function DueWeekPage() {
+export default async function DueWeekPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
+  const query = await searchParams;
   const showOffice = canViewClinicIdentity(actor);
+  const finishOwn = canMarkBenchFinish(actor);
   const now = DateTime.now().setZone(LAB_ZONE);
   const { start, end } = weekAheadWindow(now);
   const dueStart = start.plus({ days: 1 }).toISODate() ?? "";
   const dueEnd = end.plus({ days: 4 + EARLY_FINISH_DAYS }).toISODate() ?? "";
   const found = await listCasesDueBetween(actor.id, dueStart, dueEnd);
+  const stillOpen = await listStillOpen(actor.id);
   const rows = found.filter((row) => {
     if (!row.requested_delivery_at) return false;
     const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
@@ -47,9 +53,10 @@ export default async function DueWeekPage() {
   }
   return (
     <div className="grid gap-5">
+      {query.notice ? <p className="rounded-md bg-amber-50 p-3 text-sm">{query.notice}</p> : null}
       <header>
         <p className="text-sm"><Link href="/">Today</Link></p>
-        <p className="lab-kicker mt-3">Start early</p>
+        <p className="lab-kicker mt-3">Coming up</p>
         <h1 className="mt-1 text-3xl">Week ahead</h1>
       </header>
       {[...groups.entries()].map(([day, cases]) => {
@@ -70,6 +77,7 @@ export default async function DueWeekPage() {
                   <th>Type</th>
                   <th>Due</th>
                   <th>Status</th>
+                  {finishOwn ? <th></th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -82,6 +90,11 @@ export default async function DueWeekPage() {
                     <td data-label="Type"><ProductMark name={row.case_type} /></td>
                     <td data-label="Due">{dueSheetLabel(row.tracker_due, row.requested_delivery_at)}</td>
                     <td data-label="Status"><StatusPill value={row.overall_status} trackerStatus={row.tracker_status} /></td>
+                    {finishOwn ? (
+                      <td data-label="Finish">
+                        {caseIsNegarProduct(row.case_type) ? <FinishCaseButton caseId={row.id} returnTo="/due/week" /> : null}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -89,7 +102,19 @@ export default async function DueWeekPage() {
           </section>
         );
       })}
-      {rows.length === 0 ? <p className="lab-card p-4 text-sm">No in-lab cases are due on those weekdays.</p> : null}
+      {rows.length === 0 ? <p className="lab-card p-4 text-sm">No cases on these days.</p> : null}
+      <section id="still-open" className="lab-card lab-sheet">
+        <div className="px-4 pt-4">
+          <h2 className="text-lg">Other open cases</h2>
+          <p className="mt-1 text-sm">
+            {stillOpen.length} {stillOpen.length === 1 ? "case is" : "cases are"} still open, but not on a day in the list above.
+            Late cases, cases with no clear date, and cases due later stay here so you can still find them.
+          </p>
+        </div>
+        {stillOpen.length > 0 ? (
+          <OpenCaseTable rows={stillOpen} showOffice={showOffice} finishReturnTo={finishOwn ? "/due/week" : undefined} />
+        ) : <p className="px-4 py-4 text-sm">All other open cases are already on a day above, or on today’s list.</p>}
+      </section>
     </div>
   );
 }
