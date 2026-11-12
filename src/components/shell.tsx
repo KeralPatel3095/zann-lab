@@ -5,19 +5,19 @@ import { roleLabels } from "@/lib/labels";
 import type { Actor } from "@/lib/privacy";
 
 const links = [
-  { href: "/", label: "Today" },
-  { href: "/due/week", label: "Week ahead" },
-  { href: "/cases", label: "Cases" },
-  { href: "/production", label: "Production", productionOnly: true },
-  { href: "/receipts", label: "Sending", receiptsOnly: true },
-  { href: "/chat", label: "Chat" },
-  { href: "/tasks", label: "My tasks" },
-  { href: "/department", label: "Department" },
-  { href: "/manage", label: "Management", managersOnly: true },
-  { href: "/import", label: "Import", backendOnly: true },
-  { href: "/notifications", label: "Notifications" },
-  { href: "/account", label: "Password", backendOnly: true },
-  { href: "/admin", label: "Admin", backendOnly: true },
+  { href: "/", label: "Today", group: "primary" as const },
+  { href: "/due/week", label: "Week ahead", group: "primary" as const },
+  { href: "/cases", label: "Cases", group: "primary" as const },
+  { href: "/production", label: "Production", group: "primary" as const, productionOnly: true },
+  { href: "/tasks", label: "My tasks", group: "floor" as const },
+  { href: "/department", label: "Department", group: "floor" as const },
+  { href: "/chat", label: "Chat", group: "floor" as const },
+  { href: "/notifications", label: "Notifications", group: "floor" as const },
+  { href: "/receipts", label: "Sending", group: "office" as const, receiptsOnly: true },
+  { href: "/manage", label: "Management", group: "office" as const, managersOnly: true },
+  { href: "/import", label: "Import", group: "office" as const, backendOnly: true },
+  { href: "/account", label: "Password", group: "office" as const, backendOnly: true },
+  { href: "/admin", label: "Admin", group: "office" as const, backendOnly: true },
 ];
 
 export async function Shell({ actor, children }: { actor: Actor; children: React.ReactNode }) {

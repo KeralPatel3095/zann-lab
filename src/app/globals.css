@@ -353,51 +353,137 @@ tbody tr.bench-other:hover { background: #efe7dc; }
 }
 
 .lab-nav-wrap::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 28px;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95));
+  content: none;
 }
 
 .lab-nav {
   display: flex;
+  align-items: center;
   gap: 4px;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 2px 18px 2px 0;
+  overflow: visible;
+  padding: 2px 0;
 }
 
 .lab-nav::-webkit-scrollbar {
   display: none;
 }
 
-.lab-nav a {
+.lab-nav a,
+.lab-more > button {
   color: #5a6368;
   text-decoration: none;
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
-  padding: 8px 10px;
-  border-radius: 4px;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
-.lab-nav a:hover {
+.lab-nav a:hover,
+.lab-more > button:hover {
   color: var(--zann-ink);
   background: #f3f6f7;
 }
 
-.lab-nav a.is-active {
-  color: var(--zann-teal);
-  background: transparent;
-  border-bottom-color: var(--zann-teal);
+.lab-nav a:focus-visible,
+.lab-more > button:focus-visible,
+.lab-jumps a:focus-visible,
+.lab-more-panel a:focus-visible {
+  outline: 2px solid var(--zann-teal);
+  outline-offset: 2px;
+}
+
+.lab-more {
+  position: relative;
+}
+
+.lab-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  min-width: 220px;
+  padding: 6px;
+  background: white;
+  border: 1px solid var(--zann-line);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(32, 36, 38, 0.12);
+}
+
+.lab-more-panel p,
+.lab-drawer-group p {
+  margin: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a8489;
+}
+
+.lab-more-panel a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--zann-ink);
+  text-decoration: none;
+  font-size: 14px;
   font-weight: 600;
+}
+
+.lab-more-panel a:hover,
+.lab-more-panel a.is-active {
+  background: var(--zann-teal-soft);
+  color: var(--zann-teal);
+}
+
+.lab-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lab-jumps a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--zann-line);
+  border-radius: 10px;
+  background: white;
+  color: var(--zann-ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(47, 52, 55, 0.04);
+}
+
+.lab-jumps a:hover {
+  border-color: #b7d0d6;
+  background: #f7fbfc;
+}
+
+.lab-jumps strong {
+  min-width: 1.5rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--zann-teal-soft);
+  color: var(--zann-teal);
+  font-size: 13px;
+  text-align: center;
+}
+
+#finish-today,
+#finished-today,
+#still-open,
+#finished-by-negar {
+  scroll-margin-top: 88px;
 }
 
 .lab-who {
@@ -784,7 +870,16 @@ a.lab-card:hover,
 
   .lab-drawer nav {
     display: grid;
+    gap: 12px;
+  }
+
+  .lab-drawer-group {
+    display: grid;
     gap: 4px;
+  }
+
+  .lab-drawer-group p {
+    margin: 0 4px;
   }
 
   .lab-drawer a {

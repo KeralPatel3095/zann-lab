@@ -38,6 +38,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <h1 className="mt-1 text-3xl">Today</h1>
         <p className="mt-1 text-sm">{today.toFormat("cccc, d LLLL yyyy")} · Toronto</p>
         <BenchLegend />
+        <nav className="lab-jumps mt-4" aria-label="On this page">
+          <a href="#finish-today">Finish today <strong>{data.finishToday.length}</strong></a>
+          {finishOwn ? <a href="#finished-today">You finished <strong>{myFinished.length}</strong></a> : null}
+          {finishedBoard ? <a href="#finished-by-negar">Finished by Negar <strong>{finishedBoard.length}</strong></a> : null}
+          <a href="#still-open">Other open <strong>{data.stillOpen.length}</strong></a>
+        </nav>
         <p className="mt-3 text-sm">
           <span className="lab-count text-3xl font-semibold text-[#545658]">{data.inLab}</span>
           {" "}{data.inLab === 1 ? "case" : "cases"} in the lab
@@ -119,7 +125,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         ) : <p className="px-4 py-4 text-sm">All open cases are already on today’s list or in Week ahead.</p>}
       </section>
       {finishedBoard ? (
-        <section className="lab-card lab-card-done lab-sheet">
+        <section id="finished-by-negar" className="lab-card lab-card-done lab-sheet">
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
             <div>
               <h2 className="text-xl">Finished by Negar</h2>
