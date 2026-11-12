@@ -109,7 +109,7 @@ export default async function DueWeekPage({ searchParams }: { searchParams: Prom
           <h2 className="text-lg">Other open cases</h2>
           <p className="mt-1 text-sm">
             {stillOpen.length} {stillOpen.length === 1 ? "case is" : "cases are"} still open, but not on a day in the list above.
-            Late cases, cases with no clear date, and cases due later stay here so you can still find them.
+            This list is the same for everyone. Late cases, cases with no clear date, and cases due later stay here.
           </p>
         </div>
         {stillOpen.length > 0 ? (

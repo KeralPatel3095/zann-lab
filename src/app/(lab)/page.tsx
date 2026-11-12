@@ -117,7 +117,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <h2 className="text-xl">Other open cases</h2>
           <p className="mt-1 text-sm">
             {data.stillOpen.length} {data.stillOpen.length === 1 ? "case is" : "cases are"} still open, but not on today’s list or on a day in Week ahead.
-            Late cases, cases with no clear date, and cases due later stay here so you can still find them.
+            This list is the same for everyone. Late cases, cases with no clear date, and cases due later stay here.
           </p>
         </div>
         {data.stillOpen.length > 0 ? (

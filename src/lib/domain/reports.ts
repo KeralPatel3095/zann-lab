@@ -287,7 +287,6 @@ async function loadStillOpen(
     order by c.requested_delivery_at nulls last, c.case_number
   `;
   return rows
-    .filter((row) => canViewCaseType(actor, row.case_type))
     .filter((row) => {
       const opDue = operationalDueAt(row.requested_delivery_at, row.dentist_code);
       if (!opDue) return true;

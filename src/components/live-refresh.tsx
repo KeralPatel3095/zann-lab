@@ -7,14 +7,19 @@ import { useEffect } from "react";
 export function LiveRefresh() {
   const router = useRouter();
   useEffect(() => {
-    const timer = setInterval(() => {
+    const refresh = () => {
       if (document.visibilityState !== "visible") return;
       const active = document.activeElement;
       const tag = active?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       router.refresh();
-    }, 60_000);
-    return () => clearInterval(timer);
+    };
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [router]);
   return null;
 }

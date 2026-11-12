@@ -146,6 +146,22 @@ export async function syncConfiguredTracker() {
   await syncState.__zannTrackerSync;
 }
 
+/** Any signed-in person can refresh the shared sheet. The page does not wait for it. */
+export function syncTrackerIfStale() {
+  void syncTrackerIfStaleNow();
+}
+
+async function syncTrackerIfStaleNow() {
+  try {
+    const checked = await readSetting("tracker_sync_checked_at");
+    const last = checked ? DateTime.fromISO(checked) : null;
+    if (last?.isValid && DateTime.now().diff(last, "seconds").seconds < 90) return;
+    await syncConfiguredTracker();
+  } catch {
+    console.error("Case tracker sync failed");
+  }
+}
+
 async function runConfiguredTracker() {
   const userId = await schedulerId();
   const downloaded = await loadTrackerBytes();
