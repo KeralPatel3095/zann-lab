@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { DateTime } from "luxon";
 import { DailyReportCard } from "@/components/daily-report";
 import { FinishedCaseTable, type WorksheetAddedRow } from "@/components/finished-case-table";
 import { canMarkBenchFinish, canSeeProductionReport } from "@/lib/bench-board";
 import { requireActorPage } from "@/lib/auth/current";
 import { listFinishHistory } from "@/lib/domain/bench-finish";
-import { myDailyReport, myReports, productionReports } from "@/lib/domain/daily-production";
+import { myDailyReport, myReports } from "@/lib/domain/daily-production";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { LAB_ZONE } from "@/lib/scheduling/calendar";
 
@@ -13,9 +14,11 @@ export default async function WorksheetPage({ searchParams }: { searchParams: Pr
   const actor = await requireActorPage();
   const query = await searchParams;
   const technician = actor.role === "technician";
-  const office = canSeeProductionReport(actor);
+  if (!technician) {
+    if (canSeeProductionReport(actor)) redirect("/production");
+    return <p>This page is unavailable.</p>;
+  }
   const finishOwn = canMarkBenchFinish(actor);
-  if (!technician && !office) return <p>This page is unavailable.</p>;
   const now = DateTime.now().setZone(LAB_ZONE);
   const todayKey = now.toISODate() ?? "";
   const days = [{ workDate: todayKey, label: "Finished today", isToday: true }];
@@ -25,11 +28,9 @@ export default async function WorksheetPage({ searchParams }: { searchParams: Pr
     days.push({ workDate: day.toISODate() ?? "", label: day.toFormat("cccc d LLLL"), isToday: false });
   }
   const start = days[days.length - 1]?.workDate ?? todayKey;
-  const mine = technician ? await myDailyReport(actor.id) : null;
-  const written = technician
-    ? await myReports(actor.id, start, todayKey)
-    : await productionReports(actor.id, start, todayKey);
-  const finishes = finishOwn || office ? await listFinishHistory(actor.id) : [];
+  const mine = await myDailyReport(actor.id);
+  const written = await myReports(actor.id, start, todayKey);
+  const finishes = finishOwn ? await listFinishHistory(actor.id) : [];
   const showOffice = canViewClinicIdentity(actor);
   return (
     <div className="grid gap-5">

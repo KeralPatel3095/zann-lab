@@ -28,7 +28,7 @@ export async function Shell({ actor, children }: { actor: Actor; children: React
   const receipts = hasReceiptsAccess(actor);
   const managers = hasManagementAccess(actor);
   const production = canSeeProductionReport(actor);
-  const worksheet = actor.role === "technician" || production;
+  const worksheet = actor.role === "technician";
   const visible = links.filter(
     (link) =>
       (!link.backendOnly || backend) &&
