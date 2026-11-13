@@ -180,6 +180,9 @@ tbody tr:hover {
   background: #f7fafb;
 }
 
+tr.worksheet-added { background: #ffffff; }
+tbody tr.worksheet-added:hover { background: #f7f8f8; }
+
 tr.bench-negar { background: #e5f4f7; }
 tr.bench-zoca { background: #fff3c4; }
 tr.bench-ned { background: #e3f5e8; }
@@ -1010,6 +1013,10 @@ a.lab-card:hover,
   .lab-sheet td[data-label="Name"]::before {
     content: none;
   }
+
+  .lab-sheet tr.worksheet-added,
+  .lab-sheet tr.worksheet-added:hover { background: #ffffff; border-color: #d5dadd; }
+  .lab-sheet tr.worksheet-added td[data-label="Case"] { background: #f7f8f8; }
 
   .lab-sheet tr.bench-negar,
   .lab-sheet tr.bench-negar:hover { background: #e5f4f7; border-color: #b7d7e0; }

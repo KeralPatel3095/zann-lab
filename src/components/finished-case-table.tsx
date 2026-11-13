@@ -62,7 +62,7 @@ export function FinishedCaseTable({
           </tr>
         ))}
         {added.map((row) => (
-          <tr key={row.id} className={benchRowClass(row.caseType)}>
+          <tr key={row.id} className="worksheet-added">
             <td data-label="Case">
               {row.caseId ? <Link className="text-teal-800" href={`/cases/${row.caseId}`}>{row.caseNumber}</Link> : row.caseNumber}
             </td>
