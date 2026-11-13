@@ -5,11 +5,15 @@ import { fail, runAs, type ActionResult } from "./common";
 
 export type DailyReportItem = {
   id: string;
+  caseId: string | null;
   caseNumber: string;
   patientName: string;
+  panNumber: string;
   caseType: string;
+  overallStatus: string;
   kind: "worked" | "started";
   note: string;
+  finishedAt: Date | null;
 };
 
 export type DailyReport = {
@@ -26,11 +30,15 @@ type ItemRow = {
   report_note: string;
   technician_name: string;
   item_id: string | null;
+  case_id: string | null;
   case_number: string | null;
   patient_name: string | null;
+  pan_number: string | null;
   case_type: string | null;
+  overall_status: string | null;
   kind: string | null;
   item_note: string | null;
+  item_finished_at: Date | null;
 };
 
 function groupReports(rows: ItemRow[]) {
@@ -50,11 +58,15 @@ function groupReports(rows: ItemRow[]) {
     if (!row.item_id || (row.kind !== "worked" && row.kind !== "started")) continue;
     report.items.push({
       id: row.item_id,
+      caseId: row.case_id,
       caseNumber: row.case_number ?? "",
       patientName: row.patient_name ?? "",
+      panNumber: row.pan_number ?? "",
       caseType: row.case_type ?? "",
+      overallStatus: row.overall_status ?? "",
       kind: row.kind,
       note: row.item_note ?? "",
+      finishedAt: row.item_finished_at,
     });
   }
   return reports;
@@ -75,8 +87,9 @@ export async function myDailyReport(userId: string) {
     if (actor.role !== "technician") return null;
     const rows = await tx<ItemRow[]>`
       select r.id as report_id, r.work_date::text as work_date, r.note as report_note, p.full_name as technician_name,
-             i.id as item_id, coalesce(c.case_number, i.case_number) as case_number, c.patient_name, c.case_type,
-             i.kind, i.note as item_note
+             i.id as item_id, c.id as case_id, coalesce(c.case_number, i.case_number) as case_number,
+             c.patient_name, c.pan_number, c.case_type, c.overall_status::text as overall_status,
+             i.kind, i.note as item_note, i.created_at as item_finished_at
       from daily_production_reports r
       join profiles p on p.id = r.technician_id
       left join daily_production_items i on i.report_id = r.id
@@ -94,8 +107,9 @@ export async function myReports(userId: string, start: string, end: string) {
     if (actor.role !== "technician" || !start || !end) return [];
     const rows = await tx<ItemRow[]>`
       select r.id as report_id, r.work_date::text as work_date, r.note as report_note, p.full_name as technician_name,
-             i.id as item_id, coalesce(c.case_number, i.case_number) as case_number, c.patient_name, c.case_type,
-             i.kind, i.note as item_note
+             i.id as item_id, c.id as case_id, coalesce(c.case_number, i.case_number) as case_number,
+             c.patient_name, c.pan_number, c.case_type, c.overall_status::text as overall_status,
+             i.kind, i.note as item_note, i.created_at as item_finished_at
       from daily_production_reports r
       join profiles p on p.id = r.technician_id
       left join daily_production_items i on i.report_id = r.id
@@ -176,8 +190,9 @@ export async function productionReports(userId: string, start: string, end: stri
     if (!start || !end) return [];
     const rows = await tx<ItemRow[]>`
       select r.id as report_id, r.work_date::text as work_date, r.note as report_note, p.full_name as technician_name,
-             i.id as item_id, coalesce(c.case_number, i.case_number) as case_number, c.patient_name, c.case_type,
-             i.kind, i.note as item_note
+             i.id as item_id, c.id as case_id, coalesce(c.case_number, i.case_number) as case_number,
+             c.patient_name, c.pan_number, c.case_type, c.overall_status::text as overall_status,
+             i.kind, i.note as item_note, i.created_at as item_finished_at
       from daily_production_reports r
       join profiles p on p.id = r.technician_id
       left join daily_production_items i on i.report_id = r.id

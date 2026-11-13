@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
-import { DailyReportCard, SubmittedReport } from "@/components/daily-report";
-import { FinishedCaseTable } from "@/components/finished-case-table";
+import { DailyReportCard } from "@/components/daily-report";
+import { FinishedCaseTable, type WorksheetAddedRow } from "@/components/finished-case-table";
 import { canMarkBenchFinish, canSeeProductionReport } from "@/lib/bench-board";
 import { requireActorPage } from "@/lib/auth/current";
 import { listFinishHistory } from "@/lib/domain/bench-finish";
@@ -42,26 +42,30 @@ export default async function WorksheetPage({ searchParams }: { searchParams: Pr
       </header>
       {days.map((day) => {
         const cases = finishes.filter((row) => row.work_date === day.workDate);
-        const reports = written.filter((item) => item.workDate === day.workDate && (item.note || item.items.length > 0));
-        if (!day.isToday && cases.length === 0 && reports.length === 0) return null;
-        const total = cases.length + reports.reduce((sum, item) => sum + item.items.length, 0);
+        const reports = written.filter((item) => item.workDate === day.workDate);
+        const added: WorksheetAddedRow[] = reports.flatMap((item) => item.items.map((line) => ({
+          ...line,
+          technicianName: item.technicianName,
+          removable: day.isToday && technician,
+        })));
+        if (!day.isToday && cases.length === 0 && added.length === 0 && !reports.some((item) => item.note.trim())) return null;
+        const total = cases.length + added.length;
         return (
           <section key={day.workDate} className="lab-card lab-card-done lab-sheet">
             <div className="px-4 pt-4">
-              <h2 className="text-xl">{day.label}</h2>
-              <p className="mt-1 text-sm">{total} finished</p>
+              <h2 className="text-xl">{day.isToday ? "Finished today" : day.label}</h2>
+              <p className="mt-1 text-sm">{total} finished today</p>
             </div>
-            {cases.length > 0 ? (
-              <FinishedCaseTable rows={cases} showOffice={showOffice} allowUndo={day.isToday && finishOwn} />
-            ) : null}
-            {reports.map((item) => (
-              <SubmittedReport
-                key={item.id}
-                report={item}
-                editable={day.isToday && technician}
-                hideNote={day.isToday && technician}
-                showName={office}
+            {cases.length > 0 || added.length > 0 ? (
+              <FinishedCaseTable
+                rows={cases}
+                added={added}
+                showOffice={showOffice}
+                allowUndo={day.isToday && finishOwn}
               />
+            ) : null}
+            {day.isToday && mine ? null : reports.filter((item) => item.note.trim()).map((item) => (
+              <p key={item.id} className="whitespace-pre-wrap px-4 pb-4 text-sm">{item.note}</p>
             ))}
             {day.isToday && mine ? <DailyReportCard report={mine} /> : null}
           </section>
