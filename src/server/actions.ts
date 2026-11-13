@@ -152,7 +152,7 @@ export async function submitDailyReportAction(formData: FormData) {
     const added = await addDailyItem(id, caseNumber, text(formData, "kind") || "worked", detail);
     if (!added.ok) redirect(withNotice("/worksheet", added.message));
   }
-  redirect(withNotice("/worksheet", "Submitted."));
+  redirect(withNotice("/worksheet", "Submitted. Added in Finished today."));
 }
 
 export async function removeDailyReportItemAction(formData: FormData) {

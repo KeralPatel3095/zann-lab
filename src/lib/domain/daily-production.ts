@@ -89,6 +89,25 @@ export async function myDailyReport(userId: string) {
   });
 }
 
+export async function myReports(userId: string, start: string, end: string) {
+  return runAs(userId, async (tx, actor) => {
+    if (actor.role !== "technician" || !start || !end) return [];
+    const rows = await tx<ItemRow[]>`
+      select r.id as report_id, r.work_date::text as work_date, r.note as report_note, p.full_name as technician_name,
+             i.id as item_id, coalesce(c.case_number, i.case_number) as case_number, c.patient_name, c.case_type,
+             i.kind, i.note as item_note
+      from daily_production_reports r
+      join profiles p on p.id = r.technician_id
+      left join daily_production_items i on i.report_id = r.id
+      left join cases c on c.id = i.case_id
+      where r.technician_id = ${actor.id}
+        and r.work_date between ${start}::date and ${end}::date
+      order by i.created_at
+    `;
+    return groupReports(rows);
+  });
+}
+
 export async function saveDailyNote(userId: string, note: string): Promise<ActionResult> {
   try {
     return await runAs(userId, async (tx, actor) => {

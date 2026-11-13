@@ -123,6 +123,34 @@ export async function listMyFinishesToday(userId: string) {
   });
 }
 
+/** Finished cases for the worksheet, today and the recent working days. */
+export async function listFinishHistory(userId: string) {
+  return runAs(userId, async (tx, actor) => {
+    const own = canMarkBenchFinish(actor);
+    const office = canSeeFinishedBoard(actor);
+    if (!own && !office) return [];
+    const now = DateTime.now().setZone(LAB_ZONE);
+    const start = now.minus({ days: 21 }).toISODate() ?? "";
+    const end = now.toISODate() ?? "";
+    const rows = await tx<FinishedCaseRow[]>`
+      select c.id, c.case_number, c.patient_name, c.pan_number, c.case_type,
+             c.overall_status::text as overall_status, c.tracker_status, c.tracker_due,
+             c.requested_delivery_at, c.dentist_code,
+             a.clinic_name,
+             f.finished_at, f.work_date::text as work_date, p.full_name as technician_name
+      from case_bench_finishes f
+      join cases c on c.id = f.case_id
+      join profiles p on p.id = f.finished_by
+      left join case_clinic_links l on l.case_id = c.id
+      left join clinic_accounts a on a.id = l.clinic_account_id
+      where f.work_date between ${start}::date and ${end}::date
+        and (${office} or f.finished_by = ${actor.id})
+      order by f.finished_at desc, c.case_number
+    `;
+    return hideClinic(rows, canViewClinicIdentity(actor));
+  });
+}
+
 export type ProductionDay = {
   workDate: string;
   label: string;
