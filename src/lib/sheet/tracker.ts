@@ -173,6 +173,10 @@ function dateOnly(value: ExcelJS.CellValue) {
   return short.isValid ? short.toISODate() : null;
 }
 
+export function parseTrackerDue(raw: string, receivedOn: string | null = null) {
+  return parseDueText(raw, receivedOn);
+}
+
 function parseDueText(raw: string, receivedOn: string | null) {
   const text = raw.trim();
   if (!text) return null;
@@ -189,7 +193,7 @@ function parseDueText(raw: string, receivedOn: string | null) {
     const parsed = namedDate(dayFirst[1], dayFirst[2], year);
     if (parsed) return parsed;
   }
-  const monthFirst = text.match(/\b([A-Za-z]{3,9})\.?\s*(\d{1,2})(?:st|nd|rd|th)?\b/i);
+  const monthFirst = text.match(/\b([A-Za-z]{3,9})\.?\s*(\d{1,2})(?:st|nd|rd|th)?(?!\d)/i);
   if (!monthFirst) return null;
   return namedDate(monthFirst[2], monthFirst[1], year);
 }
