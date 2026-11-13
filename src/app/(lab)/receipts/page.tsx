@@ -29,7 +29,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
       <header>
         <p className="lab-kicker">Volume</p>
         <h1 className="mt-1 text-3xl">Daily counts</h1>
-        <p className="mt-1 text-sm">Sending from the sheet due date. Entered from Evident when the API is connected.</p>
+        <p className="mt-1 text-sm">Cases due to send, and cases entered today.</p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">

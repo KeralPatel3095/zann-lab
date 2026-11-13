@@ -34,11 +34,10 @@ export default async function CasePage({ params, searchParams }: { params: Promi
           <StatusPill value={record.deadlineIndicator} kind="indicator" />
         </div>
       </header>
-      {bench ? <p className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm">Finished by {bench.technician_name} on {formatStamp(bench.finished_at)}. It is on Ana, Keral, and Parneet’s board.</p> : null}
+      {bench ? <p className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm">Finished by {bench.technician_name} on {formatStamp(bench.finished_at)}.</p> : null}
       {showFinish ? (
         <section className="rounded-xl border border-zinc-200 bg-white p-4">
           <h2 className="font-semibold">Finish this case</h2>
-          <p className="mt-1 text-sm text-zinc-600">This sends the case to Ana, Keral, and Parneet. It leaves your open list and counts on today’s production.</p>
           <div className="mt-3"><FinishCaseButton caseId={record.id} returnTo={`/cases/${record.id}`} /></div>
         </section>
       ) : null}

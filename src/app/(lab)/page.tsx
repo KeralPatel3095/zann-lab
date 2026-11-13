@@ -54,10 +54,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <section id="finished-today" className="lab-card lab-card-done lab-sheet">
           <div className="px-4 pt-4">
             <h2 className="text-xl">You finished today</h2>
-            <p className="mt-1 text-sm">
-              {myFinished.length} {myFinished.length === 1 ? "case is" : "cases are"} on Ana, Keral, and Parneet’s board.
-              Delete puts a case back on Finish today if it was marked by mistake.
-            </p>
+            <p className="mt-1 text-sm">{myFinished.length} finished today</p>
           </div>
           <FinishedCaseTable rows={myFinished} showOffice={false} allowUndo />
         </section>
@@ -116,10 +113,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
             <div>
               <h2 className="text-xl">Finished by Negar</h2>
-              <p className="mt-1 text-sm">
-                {finishedBoard.length} {finishedBoard.length === 1 ? "case" : "cases"} finished today.
-                These stay off the open lists so they are not mixed with work still in the lab.
-              </p>
+              <p className="mt-1 text-sm">{finishedBoard.length} finished today</p>
             </div>
             <Link href="/production" className="lab-btn">Daily production</Link>
           </div>

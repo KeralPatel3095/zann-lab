@@ -17,7 +17,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <p className="text-sm text-zinc-600">Checklist items and durations are placeholders until ZANN&apos;s technical leads approve them. Technician accounts cannot be granted clinic identity.</p>
       <section className="lab-card p-5">
         <h2 className="text-xl">Staff</h2>
-        <p className="mt-1 text-sm">Give each technician their own email and password. They sign in with those, and they can change the password from the Password page.</p>
+        <p className="mt-1 text-sm">Each person signs in with their own email and password.</p>
         <div className="lab-sheet mt-3">
           <table>
             <thead><tr><th>Name</th><th>Role</th><th>Clinic identity</th><th>Password</th><th>Active</th></tr></thead>

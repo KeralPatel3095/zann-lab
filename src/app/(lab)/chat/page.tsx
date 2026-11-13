@@ -10,7 +10,6 @@ export default async function ChatPage() {
       <header>
         <p className="lab-kicker">Team</p>
         <h1 className="mt-1 text-3xl">Chat</h1>
-        <p className="mt-1 text-sm">Shared history for the whole lab — open chat to see every message before you reply. New messages also appear under Notifications.</p>
       </header>
       <ChatPanel
         messages={messages.map((row) => ({

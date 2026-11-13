@@ -25,7 +25,7 @@ export default async function DueTomorrowPage({ searchParams }: { searchParams: 
         <p className="text-sm"><Link href="/">Today</Link></p>
         <p className="lab-kicker mt-3">Today</p>
         <h1 className="mt-1 text-3xl">Cases to finish today</h1>
-        <p className="mt-1 text-sm">{rows.length} {rows.length === 1 ? "case" : "cases"}. This is the full list from the Today page, including cases due {when}.</p>
+        <p className="mt-1 text-sm">{rows.length} {rows.length === 1 ? "case" : "cases"} · due {when}</p>
       </header>
       <div className="lab-card lab-sheet">
         <table>

@@ -102,7 +102,7 @@ export default async function DueWeekPage({ searchParams }: { searchParams: Prom
         );
       })}
       {rows.length === 0 ? <p className="lab-card p-4 text-sm">No cases on these days.</p> : null}
-      <p className="text-sm"><Link className="text-teal-800" href="/cases">Open cases are on Cases, where you can search.</Link></p>
+      <p className="text-sm"><Link className="text-teal-800" href="/cases">Open cases</Link></p>
     </div>
   );
 }

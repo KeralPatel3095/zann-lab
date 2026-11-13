@@ -34,11 +34,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
       <div>
         <p className="lab-kicker">Case tracker</p>
         <h1 className="mt-1 text-3xl">Cases</h1>
-        <p className="mt-1 text-sm">
-          {result.openOnly
-            ? "Open cases for everyone in the lab. Search to find any case."
-            : "Search results for everyone in the lab."}
-        </p>
+        <p className="mt-1 text-sm">{result.openOnly ? "Open cases" : "Search results"}</p>
       </div>
       <form method="get" className="lab-card grid gap-3 p-4 md:grid-cols-4">
         <label>Search<input name="q" defaultValue={params.q ?? ""} placeholder="Case, patient, or PAN" /></label>
