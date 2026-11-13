@@ -43,7 +43,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <nav className="lab-jumps mt-4" aria-label="On this page">
           <a href="#finish-today">Finish today <strong>{data.finishToday.length}</strong></a>
           {finishOwn ? <a href="#finished-today">You finished <strong>{myFinished.length}</strong></a> : null}
-          {daily ? <a href="#daily-report">Daily report</a> : null}
+          {daily && !finishOwn ? <a href="#daily-report">Daily report</a> : null}
           {finishedBoard ? <a href="#finished-by-negar">Finished by Negar <strong>{finishedBoard.length}</strong></a> : null}
           <Link href="/cases">Open cases</Link>
         </nav>
@@ -61,9 +61,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <p className="mt-1 text-sm">{myFinished.length} finished today</p>
           </div>
           <FinishedCaseTable rows={myFinished} showOffice={false} allowUndo />
+          {daily ? <DailyReportCard report={daily} /> : null}
+        </section>
+      ) : daily ? (
+        <section className="lab-card">
+          <DailyReportCard report={daily} />
         </section>
       ) : null}
-      {daily ? <DailyReportCard report={daily} editing={query.report === "edit"} /> : null}
       <section id="finish-today" className="lab-card lab-card-open p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
