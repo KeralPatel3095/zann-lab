@@ -7,6 +7,7 @@ import type { Actor } from "@/lib/privacy";
 
 const links = [
   { href: "/", label: "Today", group: "primary" as const },
+  { href: "/worksheet", label: "Worksheet", group: "primary" as const, worksheetOnly: true },
   { href: "/due/week", label: "Week ahead", group: "primary" as const },
   { href: "/cases", label: "Cases", group: "primary" as const },
   { href: "/production", label: "Production", group: "primary" as const, productionOnly: true },
@@ -27,12 +28,14 @@ export async function Shell({ actor, children }: { actor: Actor; children: React
   const receipts = hasReceiptsAccess(actor);
   const managers = hasManagementAccess(actor);
   const production = canSeeProductionReport(actor);
+  const worksheet = actor.role === "technician" || production;
   const visible = links.filter(
     (link) =>
       (!link.backendOnly || backend) &&
       (!link.receiptsOnly || receipts) &&
       (!link.managersOnly || managers) &&
-      (!link.productionOnly || production),
+      (!link.productionOnly || production) &&
+      (!link.worksheetOnly || worksheet),
   );
   return (
     <div className="lab-app">

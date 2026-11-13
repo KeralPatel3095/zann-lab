@@ -3,19 +3,17 @@ import { DateTime } from "luxon";
 import { canMarkBenchFinish, canSeeFinishedBoard, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark, BenchLegend } from "@/components/case-marks";
 import { FinishCaseButton } from "@/components/finish-case-button";
-import { DailyReportCard, SubmittedReport } from "@/components/daily-report";
 import { FinishNotice } from "@/components/finish-notice";
 import { FinishedCaseTable } from "@/components/finished-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
 import { listFinishedBoard, listMyFinishesToday } from "@/lib/domain/bench-finish";
-import { myDailyReport, productionReports } from "@/lib/domain/daily-production";
 import { todayBoard } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
 import { benchRowClass } from "@/lib/product-routing";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string; report?: string }> }) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireActorPage();
   const query = await searchParams;
   const data = await todayBoard(actor.id);
@@ -23,10 +21,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const finishOwn = canMarkBenchFinish(actor);
   const finishedBoard = canSeeFinishedBoard(actor) ? await listFinishedBoard(actor.id) : null;
   const myFinished = finishOwn ? await listMyFinishesToday(actor.id) : [];
-  const daily = actor.role === "technician" ? await myDailyReport(actor.id) : null;
   const today = DateTime.now().setZone(LAB_ZONE);
-  const reportDay = today.toISODate() ?? "";
-  const officeReports = finishedBoard ? await productionReports(actor.id, reportDay, reportDay) : [];
   const openTasks = data.myTasks.reduce((sum, row) => sum + row.total, 0);
   const popup = query.notice?.startsWith("Case finished")
     ? { title: "Case finished", message: "Added in You finished today.", anchor: "finished-today" }
@@ -45,7 +40,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <nav className="lab-jumps mt-4" aria-label="On this page">
           <a href="#finish-today">Finish today <strong>{data.finishToday.length}</strong></a>
           {finishOwn ? <a href="#finished-today">You finished <strong>{myFinished.length}</strong></a> : null}
-          {daily && !finishOwn ? <a href="#daily-report">Daily report</a> : null}
           {finishedBoard ? <a href="#finished-by-negar">Finished by Negar <strong>{finishedBoard.length}</strong></a> : null}
           <Link href="/cases">Open cases</Link>
         </nav>
@@ -63,11 +57,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <p className="mt-1 text-sm">{myFinished.length} finished today</p>
           </div>
           <FinishedCaseTable rows={myFinished} showOffice={false} allowUndo />
-          {daily ? <DailyReportCard report={daily} /> : null}
-        </section>
-      ) : daily ? (
-        <section className="lab-card">
-          <DailyReportCard report={daily} />
         </section>
       ) : null}
       <section id="finish-today" className="lab-card lab-card-open p-5">
@@ -129,7 +118,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <Link href="/production" className="lab-btn">Daily production</Link>
           </div>
           <FinishedCaseTable rows={finishedBoard} showOffice={showOffice} />
-          {officeReports.map((item) => <SubmittedReport key={item.id} report={item} />)}
         </section>
       ) : null}
       {openTasks > 0 ? (

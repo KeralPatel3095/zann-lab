@@ -143,23 +143,23 @@ export async function submitDailyReportAction(formData: FormData) {
   const caseNumber = text(formData, "case_number");
   const detail = text(formData, "item_note");
   if (!note && !caseNumber && !detail) {
-    redirect(withNotice("/#daily-report", "Write what you finished, then submit."));
+    redirect(withNotice("/worksheet", "Write what you finished, then submit."));
   }
-  if (detail && !caseNumber) redirect(withNotice("/#daily-report", "Enter the case number."));
+  if (detail && !caseNumber) redirect(withNotice("/worksheet", "Enter the case number."));
   const saved = await saveDailyNote(id, note);
-  if (!saved.ok) redirect(withNotice("/#daily-report", saved.message));
+  if (!saved.ok) redirect(withNotice("/worksheet", saved.message));
   if (caseNumber) {
     const added = await addDailyItem(id, caseNumber, text(formData, "kind") || "worked", detail);
-    if (!added.ok) redirect(withNotice("/#daily-report", added.message));
+    if (!added.ok) redirect(withNotice("/worksheet", added.message));
   }
-  redirect(withNotice("/#daily-report", "Submitted."));
+  redirect(withNotice("/worksheet", "Submitted."));
 }
 
 export async function removeDailyReportItemAction(formData: FormData) {
   const id = await actorId();
   const result = await removeDailyItem(id, text(formData, "item_id"));
-  if (!result.ok) redirect(withNotice("/#daily-report", result.message));
-  redirect("/#daily-report");
+  if (!result.ok) redirect(withNotice("/worksheet", result.message));
+  redirect("/worksheet");
 }
 
 export async function deliveryAction(formData: FormData) {

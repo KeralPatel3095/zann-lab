@@ -31,7 +31,7 @@ export function SubmittedReport({ report }: { report: DailyReport }) {
 
 export function DailyReportCard({ report }: { report: DailyReport }) {
   return (
-    <div id="daily-report" className="grid gap-4 border-t border-zinc-200 px-4 py-4">
+    <div id="daily-report" className="grid gap-4 p-5">
       <div>
         <h3 className="text-lg">Add what you finished</h3>
         <p className="mt-1 text-sm">Submit it here. Ana and Keral can see it.</p>
