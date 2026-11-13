@@ -8,6 +8,7 @@ import { signSession } from "@/lib/auth/session";
 import { changeOwnPassword, createStaff, saveDepartment, saveHoliday, setStaffActive, setStaffPassword, updateSetting, updateStage } from "@/lib/domain/admin";
 import { safeReturnPath, withNotice } from "@/lib/bench-board";
 import { finishBenchCase, undoBenchFinish } from "@/lib/domain/bench-finish";
+import { addDailyItem, removeDailyItem, saveDailyNote } from "@/lib/domain/daily-production";
 import { changeDeliveryDate, createCase, holdCase, recordDispatch, recordMissingInformation, releaseCase, resumeCase, type CaseInput } from "@/lib/domain/cases";
 import { assignTask, recordQuality, transitionTask } from "@/lib/domain/tasks";
 import { commitImport } from "@/lib/domain/transfer";
@@ -134,6 +135,27 @@ export async function undoFinishCaseAction(formData: FormData) {
   const result = await undoBenchFinish(id, text(formData, "case_id"));
   if (!result.ok) redirect(withNotice("/", result.message));
   redirect(withNotice("/", "Case returned. It is back on the open list."));
+}
+
+export async function saveDailyReportAction(formData: FormData) {
+  const id = await actorId();
+  const result = await saveDailyNote(id, text(formData, "note"));
+  if (!result.ok) redirect(withNotice("/?report=edit", result.message));
+  redirect("/?report=edit#daily-report");
+}
+
+export async function addDailyReportItemAction(formData: FormData) {
+  const id = await actorId();
+  const result = await addDailyItem(id, text(formData, "case_number"), text(formData, "kind"), text(formData, "item_note"));
+  if (!result.ok) redirect(withNotice("/?report=edit", result.message));
+  redirect("/?report=edit#daily-report");
+}
+
+export async function removeDailyReportItemAction(formData: FormData) {
+  const id = await actorId();
+  const result = await removeDailyItem(id, text(formData, "item_id"));
+  if (!result.ok) redirect(withNotice("/?report=edit", result.message));
+  redirect("/?report=edit#daily-report");
 }
 
 export async function deliveryAction(formData: FormData) {

@@ -3,17 +3,19 @@ import { DateTime } from "luxon";
 import { canMarkBenchFinish, canSeeFinishedBoard, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark, BenchLegend } from "@/components/case-marks";
 import { FinishCaseButton } from "@/components/finish-case-button";
+import { DailyReportCard } from "@/components/daily-report";
 import { FinishNotice } from "@/components/finish-notice";
 import { FinishedCaseTable } from "@/components/finished-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
 import { listFinishedBoard, listMyFinishesToday } from "@/lib/domain/bench-finish";
+import { myDailyReport } from "@/lib/domain/daily-production";
 import { todayBoard } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
 import { benchRowClass } from "@/lib/product-routing";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string; report?: string }> }) {
   const actor = await requireActorPage();
   const query = await searchParams;
   const data = await todayBoard(actor.id);
@@ -21,6 +23,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const finishOwn = canMarkBenchFinish(actor);
   const finishedBoard = canSeeFinishedBoard(actor) ? await listFinishedBoard(actor.id) : null;
   const myFinished = finishOwn ? await listMyFinishesToday(actor.id) : [];
+  const daily = actor.role === "technician" ? await myDailyReport(actor.id) : null;
   const today = DateTime.now().setZone(LAB_ZONE);
   const openTasks = data.myTasks.reduce((sum, row) => sum + row.total, 0);
   const popup = query.notice?.startsWith("Case finished")
@@ -40,6 +43,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <nav className="lab-jumps mt-4" aria-label="On this page">
           <a href="#finish-today">Finish today <strong>{data.finishToday.length}</strong></a>
           {finishOwn ? <a href="#finished-today">You finished <strong>{myFinished.length}</strong></a> : null}
+          {daily ? <a href="#daily-report">Daily report</a> : null}
           {finishedBoard ? <a href="#finished-by-negar">Finished by Negar <strong>{finishedBoard.length}</strong></a> : null}
           <Link href="/cases">Open cases</Link>
         </nav>
@@ -59,6 +63,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <FinishedCaseTable rows={myFinished} showOffice={false} allowUndo />
         </section>
       ) : null}
+      {daily ? <DailyReportCard report={daily} editing={query.report === "edit"} /> : null}
       <section id="finish-today" className="lab-card lab-card-open p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
