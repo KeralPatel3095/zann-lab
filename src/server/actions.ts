@@ -137,25 +137,29 @@ export async function undoFinishCaseAction(formData: FormData) {
   redirect(withNotice("/", "Case returned. It is back on the open list."));
 }
 
-export async function saveDailyReportAction(formData: FormData) {
+export async function submitDailyReportAction(formData: FormData) {
   const id = await actorId();
-  const result = await saveDailyNote(id, text(formData, "note"));
-  if (!result.ok) redirect(withNotice("/?report=edit", result.message));
-  redirect("/?report=edit#daily-report");
-}
-
-export async function addDailyReportItemAction(formData: FormData) {
-  const id = await actorId();
-  const result = await addDailyItem(id, text(formData, "case_number"), text(formData, "kind"), text(formData, "item_note"));
-  if (!result.ok) redirect(withNotice("/?report=edit", result.message));
-  redirect("/?report=edit#daily-report");
+  const note = text(formData, "note");
+  const caseNumber = text(formData, "case_number");
+  const detail = text(formData, "item_note");
+  if (!note && !caseNumber && !detail) {
+    redirect(withNotice("/#daily-report", "Write what you finished, then submit."));
+  }
+  if (detail && !caseNumber) redirect(withNotice("/#daily-report", "Enter the case number."));
+  const saved = await saveDailyNote(id, note);
+  if (!saved.ok) redirect(withNotice("/#daily-report", saved.message));
+  if (caseNumber) {
+    const added = await addDailyItem(id, caseNumber, text(formData, "kind") || "worked", detail);
+    if (!added.ok) redirect(withNotice("/#daily-report", added.message));
+  }
+  redirect(withNotice("/#daily-report", "Submitted."));
 }
 
 export async function removeDailyReportItemAction(formData: FormData) {
   const id = await actorId();
   const result = await removeDailyItem(id, text(formData, "item_id"));
-  if (!result.ok) redirect(withNotice("/?report=edit", result.message));
-  redirect("/?report=edit#daily-report");
+  if (!result.ok) redirect(withNotice("/#daily-report", result.message));
+  redirect("/#daily-report");
 }
 
 export async function deliveryAction(formData: FormData) {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmittedReport } from "@/components/daily-report";
 import { FinishedCaseTable } from "@/components/finished-case-table";
 import { requireActorPage } from "@/lib/auth/current";
 import { productionReport } from "@/lib/domain/bench-finish";
@@ -31,23 +32,8 @@ export default async function ProductionPage() {
             <p className="text-sm">{day.cases.length} {day.cases.length === 1 ? "case" : "cases"}</p>
           </div>
           <FinishedCaseTable rows={day.cases} showOffice={showOffice} />
-          {written.filter((item) => item.workDate === day.workDate && (item.note || item.items.length > 0)).map((item) => (
-            <div key={item.id} className="grid gap-2 px-4 pb-4 text-sm">
-              <h3 className="font-semibold">{item.technicianName}</h3>
-              {item.note ? <p className="whitespace-pre-wrap">{item.note}</p> : null}
-              {item.items.length > 0 ? (
-                <ul className="grid gap-1">
-                  {item.items.map((line) => (
-                    <li key={line.id}>
-                      {line.kind === "started" ? "Started" : "Worked on"} · {line.caseNumber}
-                      {line.patientName ? ` · ${line.patientName}` : ""}
-                      {line.caseType ? ` · ${line.caseType}` : ""}
-                      {line.note ? ` — ${line.note}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
+          {written.filter((item) => item.workDate === day.workDate).map((item) => (
+            <SubmittedReport key={item.id} report={item} />
           ))}
         </section>
       ))}

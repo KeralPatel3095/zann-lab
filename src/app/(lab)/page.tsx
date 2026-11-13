@@ -3,13 +3,13 @@ import { DateTime } from "luxon";
 import { canMarkBenchFinish, canSeeFinishedBoard, caseIsNegarProduct } from "@/lib/bench-board";
 import { PanMark, ProductMark, BenchLegend } from "@/components/case-marks";
 import { FinishCaseButton } from "@/components/finish-case-button";
-import { DailyReportCard } from "@/components/daily-report";
+import { DailyReportCard, SubmittedReport } from "@/components/daily-report";
 import { FinishNotice } from "@/components/finish-notice";
 import { FinishedCaseTable } from "@/components/finished-case-table";
 import { StatusPill } from "@/components/status-pill";
 import { requireActorPage } from "@/lib/auth/current";
 import { listFinishedBoard, listMyFinishesToday } from "@/lib/domain/bench-finish";
-import { myDailyReport } from "@/lib/domain/daily-production";
+import { myDailyReport, productionReports } from "@/lib/domain/daily-production";
 import { todayBoard } from "@/lib/domain/reports";
 import { canViewClinicIdentity } from "@/lib/privacy";
 import { dueSheetLabel, LAB_ZONE } from "@/lib/scheduling/calendar";
@@ -25,6 +25,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const myFinished = finishOwn ? await listMyFinishesToday(actor.id) : [];
   const daily = actor.role === "technician" ? await myDailyReport(actor.id) : null;
   const today = DateTime.now().setZone(LAB_ZONE);
+  const reportDay = today.toISODate() ?? "";
+  const officeReports = finishedBoard ? await productionReports(actor.id, reportDay, reportDay) : [];
   const openTasks = data.myTasks.reduce((sum, row) => sum + row.total, 0);
   const popup = query.notice?.startsWith("Case finished")
     ? { title: "Case finished", message: "Added in You finished today.", anchor: "finished-today" }
@@ -127,6 +129,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <Link href="/production" className="lab-btn">Daily production</Link>
           </div>
           <FinishedCaseTable rows={finishedBoard} showOffice={showOffice} />
+          {officeReports.map((item) => <SubmittedReport key={item.id} report={item} />)}
         </section>
       ) : null}
       {openTasks > 0 ? (
